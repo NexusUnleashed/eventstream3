@@ -1,0 +1,11 @@
+{
+  "name": "nexevent",
+  "version": "1.0.5",
+  "description": "eventstream for the nexus client",
+  "main": "bundle.min.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Khaseem",
+  "license": "ISC"
+}
