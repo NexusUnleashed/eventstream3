@@ -1,8 +1,10 @@
+/* global nexusclient */
 export default class EventStream extends EventTarget {
   constructor() {
     super();
     this.stream = {};
     this.gmcpBackLog = [];
+    this.logging = false;
   }
 
   registerEvent(event, callback, once = false) {
@@ -27,6 +29,10 @@ export default class EventStream extends EventTarget {
 
   raiseEvent(event, data) {
     this.dispatchEvent(new CustomEvent(event, { detail: data }));
+    if (this.logging === true) {
+      console.log('eventStream event: ' + event);
+      console.log('eventStream data: ' + JSON.stringify(data));
+    }
   }
 
   removeListener(event, listener) {
