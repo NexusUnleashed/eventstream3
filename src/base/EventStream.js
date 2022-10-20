@@ -1,4 +1,4 @@
-/* global nexusclient */
+/* global */
 export default class EventStream extends EventTarget {
   constructor() {
     super();

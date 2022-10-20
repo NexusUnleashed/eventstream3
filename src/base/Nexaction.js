@@ -1,54 +1,51 @@
-let Action = class {
-  constructor(pattern, action, id = action.name) {
-      this._pattern = pattern;
-      this._action = action;
-      this._id = id ?? pattern.source;
-      this._enabled = true;
-  }
-  get pattern() { return this._pattern; }
-  get action() { return this._action; }
-  get id() { return this._id; }
-  get enabled() { return this._enabled; }
-  enable(tf) {
-      if (tf) { this._enabled = true; }
-      else { this._enabled = false; }
-  }
+const CreateTrigger = ({ pattern, action, id = action.name, group = false, enabled = true, once = false }) => {
+  return {
+    pattern: pattern,
+    action: action,
+    id: id ?? pattern.source,
+    group: group,
+    enabled: enabled,
+    once: once,
+  };
 };
 
-class Nexaction {
-  constructor() {
-      this._actions = [];
-  }
+const CreateHandler = () => {
+  const triggers = [];
 
-  get actions() {
-      return this._actions;
-  }
+  const add = ({ pattern, action, id = false }) => {
+    triggers.push(CreateTrigger({ pattern, action, id }));
+  };
 
-  handler(text) {
-      for (let act of this._actions) {
-          if (!act.enabled) { continue; }
+  const remove = (id) => {
+    let index = this.actions.findIndex((e) => e.id === id);
+    if (index >= 0) {
+      this._actions.splice(index, 1);
+    } else if (Number.isInteger(id)) {
+      this._actions.splice(id, 1);
+    }
+  };
 
-          let args = text.match(act.pattern);
-          if (args) {
-              act.action(args);
-          }
+  const process = (text) => {
+    for (let trigger of triggers) {
+      if (!trigger.enabled) {
+        continue;
       }
-  }
 
-  add(pattern, action, id = false) {
-      this._actions.push(new Action(pattern, action, id));
-  }
-
-  remove(id) {
-      let index = this.actions.findIndex(e => e.id === id);
-      if (index >= 0) {
-          this._actions.splice(index, 1);
-      } else if (Number.isInteger(id)) {
-          this._actions.splice(id, 1);
+      let args = text.match(trigger.pattern);
+      if (args) {
+        trigger.action(args);
       }
-  }
-}
+    }
+  };
+
+  return {
+    triggers: triggers,
+    add: add,
+    remove: remove,
+    process: process,
+  };
+};
 window.nexaction = {
-  triggers: new Nexaction(),
-  aliases: new Nexaction(),
+  triggers: CreateHandler(),
+  aliases: CreateHandler(),
 };
