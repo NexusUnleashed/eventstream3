@@ -1,4 +1,11 @@
-const CreateTrigger = ({ pattern, action, id = action.name, group = false, enabled = true, once = false }) => {
+const CreateTrigger = ({
+  pattern,
+  action,
+  id = action.name,
+  group = false,
+  enabled = true,
+  once = false,
+}) => {
   return {
     pattern: pattern,
     action: action,
@@ -12,16 +19,23 @@ const CreateTrigger = ({ pattern, action, id = action.name, group = false, enabl
 const CreateHandler = () => {
   const triggers = [];
 
-  const add = ({ pattern, action, id = false }) => {
-    triggers.push(CreateTrigger({ pattern, action, id }));
+  const add = ({
+    pattern,
+    action,
+    id = false,
+    group = false,
+    enabled = true,
+    once = false,
+  }) => {
+    triggers.push(CreateTrigger({ pattern, action, id, group, enabled, once }));
   };
 
   const remove = (id) => {
-    let index = this.actions.findIndex((e) => e.id === id);
+    let index = triggers.findIndex((e) => e.id === id);
     if (index >= 0) {
-      this._actions.splice(index, 1);
+      triggers.splice(index, 1);
     } else if (Number.isInteger(id)) {
-      this._actions.splice(id, 1);
+      triggers.splice(id, 1);
     }
   };
 
@@ -34,6 +48,9 @@ const CreateHandler = () => {
       let args = text.match(trigger.pattern);
       if (args) {
         trigger.action(args);
+        if (trigger.once) {
+          remove(trigger.id ?? trigger.pattern.source)
+        }
       }
     }
   };
