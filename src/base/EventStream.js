@@ -27,10 +27,10 @@ export const EventStream = () => {
   const raiseEvent = (event, data) => {
     eventTarget.dispatchEvent(new CustomEvent(event, { detail: data }));
     if (logging === true) {
-      console.log('eventStream event: ' + event);
-      console.log('eventStream data: ' + JSON.stringify(data));
+      console.log("eventStream event: " + event);
+      console.log("eventStream data: " + JSON.stringify(data));
     }
-  }
+  };
   const removeListener = (event, listener) => {
     let streamEvent = stream[event];
     if (typeof streamEvent === "undefined") {
@@ -57,7 +57,7 @@ export const EventStream = () => {
         eventTarget.removeListener(event, i);
       }
     }
-  }
+  };
   const purge = (event) => {
     if (event === "ALL") {
       for (const ev in stream) {
@@ -77,7 +77,7 @@ export const EventStream = () => {
       stream[event] = [];
       return;
     }
-  }
+  };
   const gmcpHandler = () => {
     while (gmcpBackLog && gmcpBackLog.length > 0) {
       const current_args = gmcpBackLog.shift();
@@ -90,7 +90,7 @@ export const EventStream = () => {
         raiseEvent(current_args.gmcp_method, current_args.gmcp_args);
       }
     }
-  }
+  };
   const setAtString = (obj, dotarr, val) => {
     dotarr.reduce((p, c, i) => {
       if (dotarr.length === ++i) {
@@ -104,8 +104,8 @@ export const EventStream = () => {
       }
       return p[c];
     }, obj);
-  }
-  
+  };
+
   return {
     stream: stream,
     registerEvent: registerEvent,
@@ -113,5 +113,5 @@ export const EventStream = () => {
     removeListener: removeListener,
     purge: purge,
     gmcpHandler: gmcpHandler,
-  }
-}
+  };
+};

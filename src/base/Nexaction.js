@@ -5,16 +5,14 @@ const CreateTrigger = ({
   group = false,
   enabled = true,
   once = false,
-}) => {
-  return {
-    pattern: pattern,
-    action: action,
-    id: id ?? pattern.source,
-    group: group,
-    enabled: enabled,
-    once: once,
-  };
-};
+}) => ({
+  pattern: pattern,
+  action: action,
+  id: id ?? pattern.source,
+  group: group,
+  enabled: enabled,
+  once: once,
+});
 
 const CreateHandler = () => {
   const triggers = [];
@@ -49,7 +47,7 @@ const CreateHandler = () => {
       if (args) {
         trigger.action(args);
         if (trigger.once) {
-          remove(trigger.id ?? trigger.pattern.source)
+          remove(trigger.id ?? trigger.pattern.source);
         }
       }
     }
@@ -62,6 +60,7 @@ const CreateHandler = () => {
     process: process,
   };
 };
+
 window.nexaction = {
   triggers: CreateHandler(),
   aliases: CreateHandler(),
