@@ -45,7 +45,14 @@ const CreateHandler = () => {
 
       let args = text.match(trigger.pattern);
       if (args) {
-        trigger.action(args);
+        try {
+          trigger.action(args);
+        } catch (error) {
+          console.log(trigger?.group);
+          console.log(trigger.pattern);
+          console.log(error)
+        }
+
         if (trigger.once) {
           remove(trigger.id ?? trigger.pattern.source);
         }

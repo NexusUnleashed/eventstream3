@@ -1,5 +1,5 @@
 /* global nexmap, nexusclient */
-export const triggers = [
+export const nexmapTriggers = [
   {
     pattern: /^You're not currently traversing to any location\.$/,
     action: () => {
