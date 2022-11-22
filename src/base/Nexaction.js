@@ -1,54 +1,92 @@
-let Action = class {
-  constructor(pattern, action, id = action.name) {
-      this._pattern = pattern;
-      this._action = action;
-      this._id = id ?? pattern.source;
-      this._enabled = true;
-  }
-  get pattern() { return this._pattern; }
-  get action() { return this._action; }
-  get id() { return this._id; }
-  get enabled() { return this._enabled; }
-  enable(tf) {
-      if (tf) { this._enabled = true; }
-      else { this._enabled = false; }
-  }
-};
+const CreateTrigger = ({
+  pattern,
+  action,
+  id = action.name,
+  group = false,
+  enabled = true,
+  once = false,
+}) => ({
+  pattern: pattern,
+  action: action,
+  id: id ?? pattern.source,
+  group: group,
+  enabled: enabled,
+  once: once,
+});
 
-class Nexaction {
-  constructor() {
-      this._actions = [];
-  }
+const CreateHandler = () => {
+  const triggers = [];
 
-  get actions() {
-      return this._actions;
-  }
+  const add = ({
+    pattern,
+    action,
+    id = false,
+    group = false,
+    enabled = true,
+    once = false,
+  }) => {
+    triggers.push(CreateTrigger({ pattern, action, id, group, enabled, once }));
+  };
 
-  handler(text) {
-      for (let act of this._actions) {
-          if (!act.enabled) { continue; }
-
-          let args = text.match(act.pattern);
-          if (args) {
-              act.action(args);
-          }
-      }
-  }
-
-  add(pattern, action, id = false) {
-      this._actions.push(new Action(pattern, action, id));
-  }
-
-  remove(id) {
-      let index = this.actions.findIndex(e => e.id === id);
+  const remove = (id) => {
+    if (typeof id === 'string') {
+      let index = triggers.findIndex((e) => e.id === id);
       if (index >= 0) {
-          this._actions.splice(index, 1);
-      } else if (Number.isInteger(id)) {
-          this._actions.splice(id, 1);
+        triggers.splice(index, 1);
       }
-  }
-}
-window.nexaction = {
-  triggers: new Nexaction(),
-  aliases: new Nexaction(),
+    } else if (Number.isInteger(id)) {
+      triggers.splice(id, 1);
+    } else if (id instanceof RegExp) {
+      let index = triggers.findIndex((e) => e.pattern.source === id.source);
+      if (index >= 0) {
+        triggers.splice(index, 1);
+      }
+    } 
+  };
+
+  const process = (text) => {
+    for (let trigger of triggers) {
+      if (!trigger.enabled) {
+        continue;
+      }
+
+      let args = text.match(trigger.pattern);
+      if (args) {
+        try {
+          trigger.action(args);
+        } catch (error) {
+          console.log(trigger?.group);
+          console.log(trigger.pattern);
+          console.log(error)
+        }
+
+        if (trigger.once) {
+          remove(trigger.id ?? trigger.pattern);
+        }
+      }
+    }
+  };
+
+  return {
+    triggers: triggers,
+    add: add,
+    remove: remove,
+    process: process,
+  };
 };
+
+globalThis.nexaction = {
+  triggers: CreateHandler(),
+  aliases: CreateHandler(),
+};
+
+/*
+{
+  pattern: /^You're not currently traversing to any location\.$/,
+  action: () => {
+    if (nexmap.walker.pathing) {
+      nexusclient.current_line.gag = true;
+    }
+  },
+}
+*/
