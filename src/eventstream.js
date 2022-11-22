@@ -1,5 +1,4 @@
-
-import EventStream from './base/EventStream'
+import { EventStream } from './base/EventStream';
 
 window.EventStream = EventStream;
-window.eventStream = new EventStream();
+window.eventStream = EventStream();

@@ -1,17 +1,17 @@
-export default class EventStream extends EventTarget {
-  constructor() {
-    super();
-    this.stream = {};
-    this.gmcpBackLog = [];
-  }
+/* global */
+export const EventStream = () => {
+  const stream = {};
+  const gmcpBackLog = [];
+  const logging = false;
+  const eventTarget = new EventTarget();
 
-  registerEvent(event, callback, once = false) {
-    if (typeof this.stream[event] === "undefined") {
-      this.stream[event] = [];
+  const registerEvent = (event, callback, once = false) => {
+    if (typeof stream[event] === "undefined") {
+      stream[event] = [];
     }
 
     let listener = { controller: new AbortController(), callback: callback };
-    this.addEventListener(
+    eventTarget.addEventListener(
       event,
       async ({ detail }) => {
         listener.callback(detail);
@@ -22,15 +22,17 @@ export default class EventStream extends EventTarget {
       }
     );
 
-    this.stream[event].push(listener);
-  }
-
-  raiseEvent(event, data) {
-    this.dispatchEvent(new CustomEvent(event, { detail: data }));
-  }
-
-  removeListener(event, listener) {
-    let streamEvent = this.stream[event];
+    stream[event].push(listener);
+  };
+  const raiseEvent = (event, data) => {
+    eventTarget.dispatchEvent(new CustomEvent(event, { detail: data }));
+    if (logging === true) {
+      console.log("eventStream event: " + event);
+      console.log("eventStream data: " + JSON.stringify(data));
+    }
+  };
+  const removeListener = (event, listener) => {
+    let streamEvent = stream[event];
     if (typeof streamEvent === "undefined") {
       console.log(
         `eventStream: Attempted to remove event that does not exist ${event}`
@@ -52,26 +54,44 @@ export default class EventStream extends EventTarget {
     } else {
       let i = streamEvent.findIndex((e) => e.callback === listener);
       if (i >= 0) {
-        this.removeListener(event, i);
+        eventTarget.removeListener(event, i);
       }
     }
-  }
+  };
+  const purge = (event) => {
+    if (event === "ALL") {
+      for (const ev in stream) {
+        for (const cb of stream[ev]) {
+          cb.controller.abort();
+        }
+      }
+      stream.length = 0; // Empty the array
+      return;
+    }
 
-  gmcpHandler() {
-    while (this.gmcpBackLog && this.gmcpBackLog.length > 0) {
-      const current_args = this.gmcpBackLog.shift();
+    if (stream[event]) {
+      for (const cb of stream[event]) {
+        cb.controller.abort();
+      }
+
+      stream[event] = [];
+      return;
+    }
+  };
+  const gmcpHandler = () => {
+    while (gmcpBackLog && gmcpBackLog.length > 0) {
+      const current_args = gmcpBackLog.shift();
       if (current_args.gmcp_method) {
-        this.setAtString(
+        setAtString(
           window.GMCP,
           current_args.gmcp_method.split("."),
           current_args.gmcp_args
         );
-        this.raiseEvent(current_args.gmcp_method, current_args.gmcp_args);
+        raiseEvent(current_args.gmcp_method, current_args.gmcp_args);
       }
     }
-  }
-
-  setAtString(obj, dotarr, val) {
+  };
+  const setAtString = (obj, dotarr, val) => {
     dotarr.reduce((p, c, i) => {
       if (dotarr.length === ++i) {
         if (typeof val === "object" && Array.isArray(val) === false) {
@@ -84,26 +104,14 @@ export default class EventStream extends EventTarget {
       }
       return p[c];
     }, obj);
-  }
+  };
 
-  purge(event) {
-    if (event === "ALL") {
-      for (const ev in this.stream) {
-        for (const cb of this.stream[ev]) {
-          cb.controller.abort();
-        }
-      }
-      this.stream = [];
-      return;
-    }
-
-    if (this.stream[event]) {
-      for (const cb of this.stream[event]) {
-        cb.controller.abort();
-      }
-
-      this.stream[event] = [];
-      return;
-    }
-  }
-}
+  return {
+    stream: stream,
+    registerEvent: registerEvent,
+    raiseEvent: raiseEvent,
+    removeListener: removeListener,
+    purge: purge,
+    gmcpHandler: gmcpHandler,
+  };
+};
