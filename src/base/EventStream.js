@@ -5,7 +5,7 @@ export const EventStream = () => {
   const logging = false;
   const eventTarget = new EventTarget();
 
-  const registerEvent = (event, callback, once = false) => {
+  const registerEvent = (event, callback, once = false, duration = false) => {
     if (typeof stream[event] === "undefined") {
       stream[event] = [];
     }
@@ -18,7 +18,7 @@ export const EventStream = () => {
       },
       {
         once: once,
-        signal: listener.controller.signal,
+        signal: duration ? AbortSignal.timeout(duration) : listener.controller.signal,
       }
     );
 
