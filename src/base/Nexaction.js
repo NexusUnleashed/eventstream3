@@ -1,18 +1,28 @@
+/* global globalThis */
+
 const CreateTrigger = ({
   pattern,
   action,
-  id = action.name,
-  group = false,
-  enabled = true,
-  once = false,
-}) => ({
-  pattern: pattern,
-  action: action,
-  id: id ?? pattern.source,
-  group: group,
-  enabled: enabled,
-  once: once,
-});
+  id,
+  group,
+  enabled,
+  once,
+  duration,
+}) => {
+  if (duration) {
+    setTimeout(() => {
+      console.log("remove");
+    }, duration);
+  }
+  return {
+    pattern: pattern,
+    action: action,
+    id: id ?? pattern.source,
+    group: group,
+    enabled: enabled,
+    once: once,
+  };
+};
 
 const CreateHandler = () => {
   const triggers = [];
@@ -20,16 +30,17 @@ const CreateHandler = () => {
   const add = ({
     pattern,
     action,
-    id = false,
+    id = action.name,
     group = false,
     enabled = true,
     once = false,
+    duration = false,
   }) => {
-    triggers.push(CreateTrigger({ pattern, action, id, group, enabled, once }));
+    triggers.push(CreateTrigger({ pattern, action, id, group, enabled, once, duration }));
   };
 
   const remove = (id) => {
-    if (typeof id === 'string') {
+    if (typeof id === "string") {
       let index = triggers.findIndex((e) => e.id === id);
       if (index >= 0) {
         triggers.splice(index, 1);
@@ -41,7 +52,7 @@ const CreateHandler = () => {
       if (index >= 0) {
         triggers.splice(index, 1);
       }
-    } 
+    }
   };
 
   const process = (text) => {
@@ -57,7 +68,7 @@ const CreateHandler = () => {
         } catch (error) {
           console.log(trigger?.group);
           console.log(trigger.pattern);
-          console.log(error)
+          console.log(error);
         }
 
         if (trigger.once) {
