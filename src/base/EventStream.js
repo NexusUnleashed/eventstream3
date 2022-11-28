@@ -1,4 +1,4 @@
-/* global */
+/* global globalThis */
 export const EventStream = () => {
   const stream = {};
   const gmcpBackLog = [];
@@ -83,7 +83,7 @@ export const EventStream = () => {
       const current_args = gmcpBackLog.shift();
       if (current_args.gmcp_method) {
         setAtString(
-          window.GMCP,
+          globalThis.GMCP,
           current_args.gmcp_method.split("."),
           current_args.gmcp_args
         );
