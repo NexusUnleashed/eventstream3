@@ -113,5 +113,6 @@ export const EventStream = () => {
     removeListener: removeListener,
     purge: purge,
     gmcpHandler: gmcpHandler,
+    gmcpBackLog: gmcpBackLog,
   };
 };
