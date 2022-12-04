@@ -1,23 +1,24 @@
 /* global globalThis */
 
-const CreateTrigger = ({
-  pattern,
-  action,
-  id,
-  group,
-  enabled,
-  once,
-  duration,
-}) => {
+const CreateTrigger = ({ re, action, id, group, enabled, once, duration }) => {
   if (duration) {
     setTimeout(() => {
       console.log("remove");
     }, duration);
   }
+  let triggerId = '';
+  if (id) {
+    triggerId = id;
+  } else if (action.name) {
+    triggerId = action.name;
+  } else {
+    triggerId = re.source;
+  }
+
   return {
-    pattern: pattern,
+    re: re,
     action: action,
-    id: id ?? pattern.source,
+    id: triggerId,
     group: group,
     enabled: enabled,
     once: once,
@@ -25,68 +26,70 @@ const CreateTrigger = ({
 };
 
 const CreateHandler = () => {
-  const triggers = [];
+  const patterns = [];
 
   const add = ({
-    pattern,
+    re,
     action,
-    id = action.name,
+    id = false,
     group = false,
     enabled = true,
     once = false,
     duration = false,
   }) => {
-    triggers.push(CreateTrigger({ pattern, action, id, group, enabled, once, duration }));
+    patterns.push(
+      CreateTrigger({ re, action, id, group, enabled, once, duration })
+    );
   };
 
   const remove = (id) => {
     if (typeof id === "string") {
-      let index = triggers.findIndex((e) => e.id === id);
+      let index = patterns.findIndex((e) => e.id === id);
       if (index >= 0) {
-        triggers.splice(index, 1);
+        patterns.splice(index, 1);
       }
     } else if (Number.isInteger(id)) {
-      triggers.splice(id, 1);
+      patterns.splice(id, 1);
     } else if (id instanceof RegExp) {
-      let index = triggers.findIndex((e) => e.pattern.source === id.source);
+      let index = patterns.findIndex((e) => e.pattern.source === id.source);
       if (index >= 0) {
-        triggers.splice(index, 1);
+        patterns.splice(index, 1);
       }
     }
   };
 
   const process = (text) => {
-    for (let trigger of triggers) {
-      if (!trigger.enabled) {
+    for (let pattern of patterns) {
+      if (!pattern.enabled) {
         continue;
       }
 
-      let args = text.match(trigger.pattern);
+      let args = text.match(pattern.re);
       if (args) {
         try {
-          trigger.action(args);
+          pattern.action(args);
         } catch (error) {
-          console.log(trigger?.group);
-          console.log(trigger.pattern);
+          console.log(pattern?.group);
+          console.log(pattern.re);
           console.log(error);
         }
 
-        if (trigger.once) {
-          remove(trigger.id ?? trigger.pattern);
+        if (pattern.once) {
+          remove(pattern.id ?? pattern.re);
         }
       }
     }
   };
 
   return {
-    triggers: triggers,
+    triggers: patterns,
     add: add,
     remove: remove,
     process: process,
   };
 };
 
-globalThis.nexaction = {
+globalThis.nexAction = {
   triggers: CreateHandler(),
   aliases: CreateHandler(),
 };
