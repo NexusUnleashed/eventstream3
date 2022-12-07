@@ -92,13 +92,13 @@ export const EventStream = () => {
     }
   };
   const gmcpHandlerRaw = (gmcp) => {
-    if (gmcp.current_args.gmcp_method) {
+    if (gmcp.gmcp_method) {
       setAtString(
         window.GMCP,
-        gmcp.current_args.gmcp_method.split("."),
-        gmcp.current_args.gmcp_args
+        gmcp.gmcp_method.split("."),
+        gmcp.gmcp_args
       );
-      raiseEvent(gmcp.current_args.gmcp_method, gmcp.current_args.gmcp_args);
+      raiseEvent(gmcp.gmcp_method, gmcp.gmcp_args);
     }
   };
   const setAtString = (obj, dotarr, val) => {
@@ -122,6 +122,7 @@ export const EventStream = () => {
     raiseEvent: raiseEvent,
     removeListener: removeListener,
     purge: purge,
+    gmcpBackLog: gmcpBackLog,
     gmcpHandler: gmcpHandler,
     gmcpHandlerRaw: gmcpHandlerRaw,
   };
