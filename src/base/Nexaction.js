@@ -1,88 +1,117 @@
-const CreateTrigger = ({
-  pattern,
-  action,
-  id = action.name,
-  group = false,
-  enabled = true,
-  once = false,
-}) => ({
-  pattern: pattern,
-  action: action,
-  id: id ?? pattern.source,
-  group: group,
-  enabled: enabled,
-  once: once,
-});
+/* global globalThis */
+
+const CreateTrigger = ({ regex, action, id, group, enabled, once, duration }) => {
+  if (duration) {
+    setTimeout(() => {
+      console.log("remove");
+    }, duration);
+  }
+  let reflexId = '';
+  if (id) {
+    reflexId = id;
+  } else if (action.name !== 'action') {
+    reflexId = action.name;
+  } else {
+    reflexId = regex.source;
+  }
+
+  return {
+    regex: regex,
+    action: action,
+    id: reflexId,
+    group: group,
+    enabled: enabled,
+    once: once,
+  };
+};
 
 const CreateHandler = () => {
-  const triggers = [];
+  const reflexes = [];
 
   const add = ({
-    pattern,
+    regex,
     action,
     id = false,
     group = false,
     enabled = true,
     once = false,
+    duration = false,
   }) => {
-    triggers.push(CreateTrigger({ pattern, action, id, group, enabled, once }));
+    reflexes.push(
+      CreateTrigger({ regex, action, id, group, enabled, once, duration })
+    );
   };
 
   const remove = (id) => {
-    if (typeof id === 'string') {
-      let index = triggers.findIndex((e) => e.id === id);
+    if (typeof id === "string") {
+      let index = reflexes.findIndex((e) => e.id === id);
       if (index >= 0) {
-        triggers.splice(index, 1);
+        reflexes.splice(index, 1);
       }
     } else if (Number.isInteger(id)) {
-      triggers.splice(id, 1);
+      reflexes.splice(id, 1);
     } else if (id instanceof RegExp) {
-      let index = triggers.findIndex((e) => e.pattern.source === id.source);
+      let index = reflexes.findIndex((e) => e.reflex.source === id.source);
       if (index >= 0) {
-        triggers.splice(index, 1);
+        reflexes.splice(index, 1);
       }
-    } 
+    }
   };
 
   const process = (text) => {
-    for (let trigger of triggers) {
-      if (!trigger.enabled) {
+    for (let reflex of reflexes) {
+      if (!reflex.enabled) {
         continue;
       }
 
-      let args = text.match(trigger.pattern);
+      let args = text.match(reflex.regex);
       if (args) {
         try {
-          trigger.action(args);
+          reflex.action(args);
         } catch (error) {
-          console.log(trigger?.group);
-          console.log(trigger.pattern);
-          console.log(error)
+          console.log(reflex?.group);
+          console.log(reflex.regex);
+          console.log(error);
         }
 
-        if (trigger.once) {
-          remove(trigger.id ?? trigger.pattern);
+        if (reflex.once) {
+          remove(reflex.id ?? reflex.regex);
         }
       }
     }
   };
 
+  const clear = () => {
+    reflexes.length = 0;
+  }
+
+  const enable = (id, group=true) => {
+    reflexes.filter(e => e.group === id).forEach(e => e.enabled = true);
+  }
+
+  const disable = (id, group=true) => {
+    reflexes.filter(e => e.group === id).forEach(e => e.enabled = false);
+  }
+
   return {
-    triggers: triggers,
+    reflexes: reflexes,
     add: add,
     remove: remove,
     process: process,
+    clear: clear,
+    enable: enable,
+    disable: disable
   };
 };
 
-globalThis.nexaction = {
+globalThis.nexAction = {
   triggers: CreateHandler(),
   aliases: CreateHandler(),
 };
 
 /*
 {
-  pattern: /^You're not currently traversing to any location\.$/,
+  reflex: /^You're not currently traversing to any location\.$/,
   action: () => {
     if (nexmap.walker.pathing) {
       nexusclient.current_line.gag = true;
