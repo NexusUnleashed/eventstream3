@@ -91,6 +91,16 @@ export const EventStream = () => {
       }
     }
   };
+  const gmcpHandlerRaw = (gmcp) => {
+    if (gmcp.current_args.gmcp_method) {
+      setAtString(
+        window.GMCP,
+        gmcp.current_args.gmcp_method.split("."),
+        gmcp.current_args.gmcp_args
+      );
+      raiseEvent(gmcp.current_args.gmcp_method, gmcp.current_args.gmcp_args);
+    }
+  };
   const setAtString = (obj, dotarr, val) => {
     dotarr.reduce((p, c, i) => {
       if (dotarr.length === ++i) {
@@ -113,5 +123,6 @@ export const EventStream = () => {
     removeListener: removeListener,
     purge: purge,
     gmcpHandler: gmcpHandler,
+    gmcpHandlerRaw: gmcpHandlerRaw,
   };
 };
