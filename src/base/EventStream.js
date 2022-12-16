@@ -1,4 +1,4 @@
-/* global globalThis */
+/* global */
 export const EventStream = () => {
   const stream = {};
   const gmcpBackLog = [];
