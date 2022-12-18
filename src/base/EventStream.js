@@ -22,7 +22,10 @@ export const EventStream = () => {
       }
     );
 
-    stream[event].push(listener);
+    // If the event is designed to remove itself do not store the listener.
+    if (!once && !duration) {
+      stream[event].push(listener);
+    }
   };
   const raiseEvent = (event, data) => {
     eventTarget.dispatchEvent(new CustomEvent(event, { detail: data }));
