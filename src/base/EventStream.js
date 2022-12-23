@@ -62,13 +62,18 @@ export const EventStream = () => {
     }
   };
   const purge = (event) => {
+    if (typeof event === 'undefined') {
+      console.log('eventStream: attempted to purge invalid event');
+      return;
+    }
+
     if (event === "ALL") {
       for (const ev in stream) {
         for (const cb of stream[ev]) {
           cb.controller.abort();
         }
       }
-      stream.length = 0; // Empty the array
+      stream = {};
       return;
     }
 

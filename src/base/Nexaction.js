@@ -1,15 +1,23 @@
 /* global globalThis */
 
-const CreateTrigger = ({ regex, action, id, group, enabled, once, duration }) => {
+const CreateTrigger = ({
+  regex,
+  action,
+  id,
+  group,
+  enabled,
+  once,
+  duration,
+}) => {
   if (duration) {
     setTimeout(() => {
       console.log("remove");
     }, duration);
   }
-  let reflexId = '';
+  let reflexId = "";
   if (id) {
     reflexId = id;
-  } else if (action.name !== 'action') {
+  } else if (action.name !== "action") {
     reflexId = action.name;
   } else {
     reflexId = regex.source;
@@ -83,15 +91,15 @@ const CreateHandler = () => {
 
   const clear = () => {
     reflexes.length = 0;
-  }
+  };
 
-  const enable = (id, group=true) => {
-    reflexes.filter(e => e.group === id).forEach(e => e.enabled = true);
-  }
+  const enable = (id, group = true) => {
+    reflexes.filter((e) => e.group === id).forEach((e) => (e.enabled = true));
+  };
 
-  const disable = (id, group=true) => {
-    reflexes.filter(e => e.group === id).forEach(e => e.enabled = false);
-  }
+  const disable = (id, group = true) => {
+    reflexes.filter((e) => e.group === id).forEach((e) => (e.enabled = false));
+  };
 
   return {
     reflexes: reflexes,
@@ -100,7 +108,7 @@ const CreateHandler = () => {
     process: process,
     clear: clear,
     enable: enable,
-    disable: disable
+    disable: disable,
   };
 };
 
