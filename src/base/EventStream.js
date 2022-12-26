@@ -43,21 +43,28 @@ export const EventStream = () => {
       return;
     }
 
+    const clearListener = (i) => {
+      streamEvent[i].controller.abort();
+      streamEvent.splice(i, 1);
+    };
+
     if (typeof listener === "string") {
       const listenerIndex = streamEvent.findIndex(
         (e) => e.callback.name === listener
       );
       if (listenerIndex >= 0) {
-        streamEvent[listenerIndex].controller.abort();
-        streamEvent.splice(listenerIndex, 1);
+        clearListener(listenerIndex);
+      } else {
+        console.log(
+          `eventStream: Unable to locate listener with name ${listener} on event ${event}.`
+        );
       }
-    } else if (typeof listener === "number" && listener < streamEvent.length) {
-      streamEvent[listener].controller.abort();
-      streamEvent.splice(listener, 1);
+    } else if (Number.isInteger(listener) && listener < streamEvent.length) {
+      clearListener(listener);
     } else {
       let i = streamEvent.findIndex((e) => e.callback === listener);
       if (i >= 0) {
-        eventTarget.removeListener(event, i);
+        clearListener(i);
       }
     }
   };
