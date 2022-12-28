@@ -80,7 +80,10 @@ export const EventStream = () => {
           cb.controller.abort();
         }
       }
-      stream = {};
+      // Empty the stream object.
+      for (var key in stream) {
+          delete stream[key];
+      }
       return;
     }
 
