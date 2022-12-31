@@ -11,7 +11,7 @@ const CreateTrigger = ({
 }) => {
   if (duration) {
     setTimeout(() => {
-      console.log("remove");
+      globalThis.nexAction.triggers.remove(id);
     }, duration);
   }
   let reflexId = "";
@@ -39,7 +39,7 @@ const CreateHandler = () => {
   const add = ({
     regex,
     action,
-    id = false,
+    id = crypto.randomUUID(),
     group = false,
     enabled = true,
     once = false,
