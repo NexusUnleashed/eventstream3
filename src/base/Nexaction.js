@@ -1,4 +1,5 @@
 /* global globalThis */
+import crypto from "crypto";
 
 const CreateTrigger = ({
   regex,
@@ -68,7 +69,7 @@ const CreateHandler = () => {
 
   const process = (text) => {
     for (let reflex of reflexes) {
-      if (!reflex.enabled) {
+      if (reflex.enabled === false) {
         continue;
       }
 
@@ -94,11 +95,21 @@ const CreateHandler = () => {
   };
 
   const enable = (id, group = true) => {
-    reflexes.filter((e) => e.group === id).forEach((e) => (e.enabled = true));
+    if (group) {
+      reflexes.filter((e) => e.group === id).forEach((e) => (e.enabled = true));
+    } else {
+      reflexes.filter((e) => e.id === id).forEach((e) => (e.enabled = true));
+    }
   };
 
   const disable = (id, group = true) => {
-    reflexes.filter((e) => e.group === id).forEach((e) => (e.enabled = false));
+    if (group) {
+      reflexes
+        .filter((e) => e.group === id)
+        .forEach((e) => (e.enabled = false));
+    } else {
+      reflexes.filter((e) => e.id === id).forEach((e) => (e.enabled = false));
+    }
   };
 
   return {
