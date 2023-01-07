@@ -1,11 +1,12 @@
-const path = require('path');
-const TerserPlugin = require('terser-webpack-plugin');
+const path = require("path");
+const TerserPlugin = require("terser-webpack-plugin");
 
 module.exports = {
+  mode: "production",
   //entry: path.join(__dirname, 'src/base/EventStream.js'),
-  entry: path.join(__dirname, 'src/eventstream.js'),
+  entry: path.join(__dirname, "src/eventstream.js"),
   output: {
-    path: path.join(__dirname, 'dist'),
+    path: path.join(__dirname, "dist"),
     filename: `bundle.min.js`,
   },
   module: {
@@ -15,11 +16,9 @@ module.exports = {
         exclude: /node_modules/,
         options: {
           cacheDirectory: true,
-          presets: [
-            '@babel/preset-env',
-          ],
+          presets: ["@babel/preset-env"],
         },
-        loader: 'babel-loader',
+        loader: "babel-loader",
       },
     ],
   },

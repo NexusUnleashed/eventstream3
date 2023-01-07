@@ -18,7 +18,9 @@ export const EventStream = () => {
       },
       {
         once: once,
-        signal: duration ? AbortSignal.timeout(duration) : listener.controller.signal,
+        signal: duration
+          ? AbortSignal.timeout(duration)
+          : listener.controller.signal,
       }
     );
 
@@ -69,8 +71,8 @@ export const EventStream = () => {
     }
   };
   const purge = (event) => {
-    if (typeof event === 'undefined') {
-      console.log('eventStream: attempted to purge invalid event');
+    if (typeof event === "undefined") {
+      console.log("eventStream: attempted to purge invalid event");
       return;
     }
 
@@ -82,7 +84,7 @@ export const EventStream = () => {
       }
       // Empty the stream object.
       for (var key in stream) {
-          delete stream[key];
+        delete stream[key];
       }
       return;
     }
@@ -111,11 +113,7 @@ export const EventStream = () => {
   };
   const gmcpHandlerRaw = (gmcp) => {
     if (gmcp.gmcp_method) {
-      setAtString(
-        window.GMCP,
-        gmcp.gmcp_method.split("."),
-        gmcp.gmcp_args
-      );
+      setAtString(globalThis.GMCP, gmcp.gmcp_method.split("."), gmcp.gmcp_args);
       raiseEvent(gmcp.gmcp_method, gmcp.gmcp_args);
     }
   };

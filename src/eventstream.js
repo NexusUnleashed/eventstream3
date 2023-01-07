@@ -1,4 +1,4 @@
-import { EventStream } from './base/EventStream';
+import { EventStream } from "./base/EventStream";
 
-window.EventStream = EventStream;
-window.eventStream = EventStream();
+globalThis.EventStream = EventStream;
+globalThis.eventStream = EventStream();
