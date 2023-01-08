@@ -1,6 +1,3 @@
-/* global globalThis */
-import crypto from "crypto";
-
 const CreateTrigger = ({
   regex,
   action,
