@@ -29,6 +29,7 @@ export const EventStream = () => {
       stream[event].push(listener);
     }
   };
+
   const raiseEvent = (event, data) => {
     eventTarget.dispatchEvent(new CustomEvent(event, { detail: data }));
     if (logging === true) {
@@ -36,6 +37,7 @@ export const EventStream = () => {
       console.log("eventStream data: " + JSON.stringify(data));
     }
   };
+
   const removeListener = (event, listener) => {
     let streamEvent = stream[event];
     if (typeof streamEvent === "undefined") {
@@ -60,6 +62,7 @@ export const EventStream = () => {
         console.log(
           `eventStream: Unable to locate listener with name ${listener} on event ${event}.`
         );
+        return false;
       }
     } else if (Number.isInteger(listener) && listener < streamEvent.length) {
       clearListener(listener);
@@ -69,7 +72,10 @@ export const EventStream = () => {
         clearListener(i);
       }
     }
+
+    console.log(`eventStream: Removed event ${listener} on event ${event}.`);
   };
+
   const purge = (event) => {
     if (typeof event === "undefined") {
       console.log("eventStream: attempted to purge invalid event");
