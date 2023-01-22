@@ -11,6 +11,7 @@ export const EventStream = () => {
     }
 
     let listener = { controller: new AbortController(), callback: callback };
+    //listener.controller.signal.onabort = () => {console.log('this fires when aborted')}
     eventTarget.addEventListener(
       event,
       async ({ detail }) => {
@@ -23,6 +24,19 @@ export const EventStream = () => {
           : listener.controller.signal,
       }
     );
+
+    /* 
+    We may need to expand this snippet for a use case like: User adds a duration
+    event for 10 minutes, and at some point wants to cancel it. There is no mechanism
+    to abort a duration event currently once started. 
+    if (duration) {
+      listener.timer = setTimeout(() => {
+        listener.controller.abort();
+        removeListener(event, callback.name);
+      }, duration);
+      listener.controller.signal.onabort = () => {clearTimeout(listener.timer)}
+    }
+    */
 
     // If the event is designed to remove itself do not store the listener.
     if (!once && !duration) {
@@ -76,6 +90,9 @@ export const EventStream = () => {
     console.log(`eventStream: Removed event ${listener} on event ${event}.`);
   };
 
+  const getListener = (event, id) => {
+    return stream[event].find((e) => e.callback.name === id);
+  };
   const purge = (event) => {
     if (typeof event === "undefined") {
       console.log("eventStream: attempted to purge invalid event");
@@ -143,6 +160,7 @@ export const EventStream = () => {
     registerEvent: registerEvent,
     raiseEvent: raiseEvent,
     removeListener: removeListener,
+    getListener: getListener,
     purge: purge,
     gmcpBackLog: gmcpBackLog,
     gmcpHandler: gmcpHandler,
