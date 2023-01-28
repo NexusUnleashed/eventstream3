@@ -29,6 +29,9 @@ export const EventStream = () => {
     We may need to expand this snippet for a use case like: User adds a duration
     event for 10 minutes, and at some point wants to cancel it. There is no mechanism
     to abort a duration event currently once started. 
+
+    This is also the only way to combine a ONCE with a DURATION
+    
     if (duration) {
       listener.timer = setTimeout(() => {
         listener.controller.abort();
