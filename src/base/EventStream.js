@@ -10,7 +10,11 @@ export const EventStream = () => {
       stream[event] = [];
     }
 
-    let listener = { controller: new AbortController(), callback: callback };
+    let listener = {
+      controller: new AbortController(),
+      callback: callback,
+      id: crypto.randomUUID(),
+    };
     //listener.controller.signal.onabort = () => {console.log('this fires when aborted')}
     eventTarget.addEventListener(
       event,
