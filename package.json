@@ -1,6 +1,6 @@
 {
-  "name": "eventstream",
-  "version": "0.1.0",
+  "name": "nexevent",
+  "version": "1.1.6",
   "private": true,
   "dependencies": {
     "@testing-library/jest-dom": "^5.16.4",
