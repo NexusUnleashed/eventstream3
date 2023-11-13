@@ -10,45 +10,45 @@ export const EventStream = () => {
       stream[event] = [];
     }
 
-    let listener = {
+    const listener = {
       controller: new AbortController(),
       callback: callback,
       id: crypto.randomUUID(),
     };
-    //listener.controller.signal.onabort = () => {console.log('this fires when aborted')}
-    eventTarget.addEventListener(
-      event,
-      async ({ detail }) => {
-        listener.callback(detail);
-      },
-      {
-        once: once,
-        signal: duration
-          ? AbortSignal.timeout(duration)
-          : listener.controller.signal,
-      }
-    );
 
-    /* 
-    We may need to expand this snippet for a use case like: User adds a duration
-    event for 10 minutes, and at some point wants to cancel it. There is no mechanism
-    to abort a duration event currently once started. 
-
-    This is also the only way to combine a ONCE with a DURATION
-    
     if (duration) {
       listener.timer = setTimeout(() => {
         listener.controller.abort();
         removeListener(event, callback.name);
       }, duration);
-      listener.controller.signal.onabort = () => {clearTimeout(listener.timer)}
-    }
-    */
 
-    // If the event is designed to remove itself do not store the listener.
-    if (!once && !duration) {
-      stream[event].push(listener);
+      listener.controller.signal.onabort = (evt) => {
+        clearTimeout(listener.timer);
+      };
     }
+
+    // event with ONCE and DURATION that fire do not natively clear the timeout
+    // This snippet bundles a clearTimeout call with the ONCE callback
+    const callbackBundle = once
+      ? async ({ detail }) => {
+          listener.callback(detail);
+          removeListener(event, callback.name);
+        }
+      : async ({ detail }) => {
+          listener.callback(detail);
+        };
+
+    eventTarget.addEventListener(event, callbackBundle, {
+      once: once,
+      signal: listener.controller.signal,
+    });
+
+    //https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal/timeout_static
+    //At time of writing there is no way to combine multiple signals. This means that you can't
+    //directly abort a download using either a timeout signal or by calling AbortController.abort()
+    //signal: duration ? AbortSignal.timeout(duration) : listener.controller.signal
+
+    stream[event].push(listener);
   };
 
   const raiseEvent = (event, data) => {
@@ -100,6 +100,7 @@ export const EventStream = () => {
   const getListener = (event, id) => {
     return stream[event].find((e) => e.callback.name === id);
   };
+
   const purge = (event) => {
     if (typeof event === "undefined") {
       console.log("eventStream: attempted to purge invalid event");
@@ -128,6 +129,7 @@ export const EventStream = () => {
       return;
     }
   };
+
   const gmcpHandler = () => {
     while (gmcpBackLog && gmcpBackLog.length > 0) {
       const current_args = gmcpBackLog.shift();
@@ -141,12 +143,14 @@ export const EventStream = () => {
       }
     }
   };
+
   const gmcpHandlerRaw = (gmcp) => {
     if (gmcp.gmcp_method) {
       setAtString(globalThis.GMCP, gmcp.gmcp_method.split("."), gmcp.gmcp_args);
       raiseEvent(gmcp.gmcp_method, gmcp.gmcp_args);
     }
   };
+
   const setAtString = (obj, dotarr, val) => {
     dotarr.reduce((p, c, i) => {
       if (dotarr.length === ++i) {

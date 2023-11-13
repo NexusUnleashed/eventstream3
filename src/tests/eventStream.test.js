@@ -1,7 +1,25 @@
+/*global crypto */
+
 import { EventStream } from "../base/EventStream";
+
+beforeEach(() => {
+  window.crypto = {
+    randomUUID() {
+      return 42;
+    },
+  };
+  jest.useFakeTimers();
+  jest.spyOn(global, "setTimeout");
+});
+
+afterEach(() => {
+  jest.runOnlyPendingTimers();
+  jest.useRealTimers();
+});
 
 describe("basic eventStream functionality", () => {
   const eventStream = EventStream();
+
   test("eventStream loaded", () => {
     expect(eventStream).toBeDefined();
   });
@@ -29,11 +47,9 @@ describe("basic eventStream functionality", () => {
   });
 
   test("remove event by object from eventStream", () => {
-    let testEvent = () => {
-      console.log("hello world");
-    };
-    eventStream.registerEvent("testEvent", testEvent);
-    eventStream.removeListener("testEvent", testEvent);
+    const callback = jest.fn();
+    eventStream.registerEvent("testEvent", callback);
+    eventStream.removeListener("testEvent", callback);
     expect(eventStream.stream["testEvent"]).toHaveLength(0);
   });
 
@@ -47,5 +63,30 @@ describe("basic eventStream functionality", () => {
     eventStream.raiseEvent("testEvent");
     expect(eventStream.stream["testEvent"]).toHaveLength(0);
     expect(check).toEqual(1);
+  });
+
+  test("'once' with 'duration' events clear on fire", () => {
+    let check = 0;
+    let testEvent = () => {
+      check += 1;
+    };
+    eventStream.registerEvent("testEvent", testEvent, true, 5000);
+    eventStream.raiseEvent("testEvent");
+    eventStream.raiseEvent("testEvent");
+    expect(eventStream.stream["testEvent"]).toHaveLength(0);
+    expect(check).toEqual(1);
+  });
+
+  test("'duration' events clear on time", () => {
+    let check = 0;
+    let durationEvent = () => {
+      check += 1;
+    };
+    eventStream.registerEvent("testEvent", durationEvent, false, 5000);
+    //jest.advanceTimersByTime(10000);
+    //eventStream.raiseEvent("testEvent");
+    jest.runAllTimers();
+    expect(eventStream.stream["testEvent"]).toHaveLength(0);
+    expect(check).toEqual(0);
   });
 });
