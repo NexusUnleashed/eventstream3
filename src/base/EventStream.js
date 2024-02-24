@@ -38,6 +38,8 @@ export const EventStream = () => {
           listener.callback(detail);
         };
 
+    // Do not allow duplicates of functions in each event. Remove action.
+    removeListener(event, callback.name);
     eventTarget.addEventListener(event, callbackBundle, {
       once: once,
       signal: listener.controller.signal,
