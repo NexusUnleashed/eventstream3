@@ -183,5 +183,3 @@ export const EventStream = () => {
     gmcpHandlerRaw: gmcpHandlerRaw,
   };
 };
-
-//Char.Status {"name":"Nicola","fullname":"Nicola","age":"1","race":"Troll","specialisation":"","level":"1 (0%)","xp":"0%","xprank":"0","class":"Magi","city":"Ashtan (1)","house":"(None)","order":"(None)","boundcredits":"0","unboundcredits":"0","lessons":"0","explorerrank":"a Sightseer","mayancrowns":"0","boundmayancrowns":"0","gold":"0","bank":"0","unread_news":"0","unread_msgs":"0","target":"None","gender":"male"}
