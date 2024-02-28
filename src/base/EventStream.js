@@ -35,7 +35,19 @@ export const EventStream = () => {
           removeListener(event, callback.name);
         }
       : async ({ detail }) => {
-          listener.callback(detail);
+          try {
+            listener.callback(detail);
+          } catch (error) {
+            console.error(
+              "Evenstream raiseEvent error:\nevent: %s %o\ncallback %s: %o\ndata: %o\nerror: %o",
+              event,
+              stream[event],
+              callback.name,
+              { callback },
+              detail,
+              error
+            );
+          }
         };
 
     // Do not allow duplicates of functions in each event. Remove action.
@@ -58,6 +70,7 @@ export const EventStream = () => {
 
   const raiseEvent = (event, data) => {
     eventTarget.dispatchEvent(new CustomEvent(event, { detail: data }));
+
     if (logging === true) {
       console.log("eventStream event: " + event);
       console.log("eventStream data: " + JSON.stringify(data));
@@ -66,10 +79,9 @@ export const EventStream = () => {
 
   const removeListener = (event, listener) => {
     let streamEvent = stream[event];
+
+    // If the event does not exist, do nothing.
     if (typeof streamEvent === "undefined") {
-      console.log(
-        `eventStream: Attempted to remove event that does not exist ${event}`
-      );
       return;
     }
 
