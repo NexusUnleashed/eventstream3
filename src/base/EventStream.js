@@ -94,12 +94,10 @@ export const EventStream = () => {
       const listenerIndex = streamEvent.findIndex(
         (e) => e.callback.name === listener
       );
+
       if (listenerIndex >= 0) {
         clearListener(listenerIndex);
       } else {
-        console.log(
-          `eventStream: Unable to locate listener with name ${listener} on event ${event}.`
-        );
         return false;
       }
     } else if (Number.isInteger(listener) && listener < streamEvent.length) {
