@@ -17,6 +17,10 @@ const updateNxs = () => {
     });
 };
 
-if (typeof nexusclient !== "undefined" && nexusclient.charname !== "khaseem") {
+if (
+  typeof nexusclient !== "undefined" &&
+  nexusclient.logged_in &&
+  nexusclient.charname !== "khaseem"
+) {
   updateNxs();
 }
