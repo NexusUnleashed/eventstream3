@@ -136,8 +136,8 @@ export const EventStream = () => {
     }
 
     if (stream[event]) {
-      for (const cb of stream[event]) {
-        cb.controller.abort();
+      for (const callback of stream[event]) {
+        callback.controller.abort();
       }
 
       stream[event] = [];
@@ -182,14 +182,14 @@ export const EventStream = () => {
   };
 
   return {
-    stream: stream,
-    registerEvent: registerEvent,
-    raiseEvent: raiseEvent,
-    removeListener: removeListener,
-    getListener: getListener,
-    purge: purge,
-    gmcpBackLog: gmcpBackLog,
-    gmcpHandler: gmcpHandler,
-    gmcpHandlerRaw: gmcpHandlerRaw,
+    stream,
+    registerEvent,
+    raiseEvent,
+    removeListener,
+    getListener,
+    purge,
+    gmcpBackLog,
+    gmcpHandler,
+    gmcpHandlerRaw,
   };
 };
