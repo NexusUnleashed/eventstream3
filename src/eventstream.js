@@ -1,7 +1,9 @@
 import { EventStream } from "./base/EventStream";
+import createTimer from "./base/Timer";
 
 globalThis.EventStream = EventStream;
 globalThis.eventStream = EventStream();
+globalThis.eventStream.createTimer = createTimer;
 
 const updateNxs = () => {
   fetch(`https://unpkg.com/nexevent/eventStream3.nxs`, { cache: "no-store" })
