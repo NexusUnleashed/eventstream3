@@ -14,6 +14,14 @@ class Timer {
     return this._length;
   }
 
+  get id() {
+    return this._id;
+  }
+
+  get enabled() {
+    return this._enabled;
+  }
+
   setLength(length) {
     if (length < 0) {
       throw new Error("Timer length cannot be negative");
@@ -24,9 +32,10 @@ class Timer {
   //Reset properties to default state.
   reset() {
     clearTimeout(this._timerId);
+    this._enabled = false;
     this.setLength(this._defaultLength);
-    this._startTime = 0;
-    this._endTime = 0;
+    this._endTime = performance.now() / 1000;
+    eventStream.raiseEvent(`timerReset${this._id}`);
   }
 
   start() {
@@ -59,9 +68,7 @@ class Timer {
   }
 
   remaining() {
-    return this._enabled
-      ? this._defaultLength - performance.now() / 1000 - this._startTime
-      : 0;
+    return this._enabled ? this._length - this.elapsed() : this._length;
   }
 
   static createTimer(name, length = 0) {
