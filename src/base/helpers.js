@@ -4,60 +4,6 @@ String.prototype.toProperCase = function () {
   });
 };
 
-// A few helpful functions to map/convert dot representations to their object counterparts.
-// Very useful when want to store/pull to/from database as a column name but want to
-// represent it in a view as a nested object.
-
-// var objStrConv = {};
-
-// function to set value for a nested object.
-// It will initialize the parent object if it doesn't exist
-// and recursively move down until child object is set
-// If no val is passed in then it basically initializes the object
-Object.setAtStringO = function (obj, dotarr, val) {
-  let a = dotarr.shift();
-  if (dotarr.length === 0) {
-    // if at last element in chain, set value
-    if (obj[a] === undefined) {
-      obj[a] = {};
-    }
-    if (Array.isArray(val)) {
-      obj[a] = val;
-    } else if (typeof val === "object") {
-      Object.assign(obj[a], val);
-      /*
-          for(key in val) {
-              obj[a][key] = val[key];
-          }
-          */
-    } else {
-      obj[a] = val;
-    }
-    return;
-  } else {
-    if (obj[a] === undefined) {
-      obj[a] = {};
-    }
-    Object.setAtString(obj[a], dotarr, val);
-  }
-};
-// https://stackoverflow.com/questions/6491463/accessing-nested-javascript-objects-and-arrays-by-string-path
-// Khaseem's revised snippet.
-Object.setAtStringK = function (obj, dotarr, val) {
-  dotarr.reduce((p, c, i) => {
-    if (dotarr.length === ++i) {
-      if (typeof val === "object" && Array.isArray(val) === false) {
-        p[c] = Object.assign(p[c] || {}, val);
-      } else {
-        p[c] = val;
-      }
-    } else {
-      p[c] = p[c] || {};
-    }
-    return p[c];
-  }, obj);
-};
-
 // get value of a nested object by its string representation 'blah.blah1.blah2'
 Object.getByString = function (obj, dotarr) {
   let a = dotarr.shift();
@@ -78,6 +24,18 @@ Object.getByString = function (obj, dotarr) {
     p[c] = p?.[c] || null;
     return p[c] || null;
   }, obj);
+};
+
+//Gemini
+Object.getByString = function (obj, dotarr) {
+  let current = obj;
+  for (const key of dotarr) {
+    if (current === undefined || current === null) {
+      return null;
+    }
+    current = current[key];
+  }
+  return current;
 };
 
 // Find the first key where 2 arrays or objects intersect and return it

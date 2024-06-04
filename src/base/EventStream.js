@@ -1,13 +1,14 @@
-/* global */
-export const EventStream = () => {
-  const stream = {};
-  const gmcpBackLog = [];
-  const logging = false;
-  const eventTarget = new EventTarget();
+export class EventStream extends EventTarget {
+  constructor() {
+    super();
+    this.stream = {};
+    this.gmcpBackLog = [];
+    this.logging = false;
+  }
 
-  const registerEvent = (event, callback, once = false, duration = false) => {
-    if (typeof stream[event] === "undefined") {
-      stream[event] = [];
+  registerEvent(event, callback, once = false, duration = false) {
+    if (!this.stream[event]) {
+      this.stream[event] = [];
     }
 
     const listener = {
@@ -19,75 +20,72 @@ export const EventStream = () => {
     if (duration) {
       listener.timer = setTimeout(() => {
         listener.controller.abort();
-        removeListener(event, callback.name);
+        this.removeListener(event, callback.name);
       }, duration);
 
-      listener.controller.signal.onabort = (evt) => {
+      listener.controller.signal.onabort = () => {
         clearTimeout(listener.timer);
       };
     }
 
-    // event with ONCE and DURATION that fire do not natively clear the timeout
-    // This snippet bundles a clearTimeout call with the ONCE callback
-    const callbackBundle = once
-      ? async ({ detail }) => {
-          listener.callback(detail);
-          removeListener(event, callback.name);
+    const callbackBundle = ({ detail }) => {
+      try {
+        listener.callback(detail);
+      } catch (error) {
+        console.error(
+          "Evenstream raiseEvent error:\nevent: %s %o\ncallback %s: %o\ndata: %o\nerror: %o",
+          event,
+          stream[event],
+          listener.callback.name,
+          { callback },
+          detail,
+          error
+        );
+      } finally {
+        if (once || duration) {
+          this.removeListener(event, listener.callback.name);
+          if (duration) clearTimeout(listener.timer);
         }
-      : async ({ detail }) => {
-          try {
-            listener.callback(detail);
-          } catch (error) {
-            console.error(
-              "Evenstream raiseEvent error:\nevent: %s %o\ncallback %s: %o\ndata: %o\nerror: %o",
-              event,
-              stream[event],
-              callback.name,
-              { callback },
-              detail,
-              error
-            );
-          }
-        };
+      }
+    };
 
-    // Do not allow duplicates of functions in each event. Remove action.
-    if (callback.name && callback.name.length > 0) {
-      removeListener(event, callback.name);
+    if (callback.name) {
+      this.removeListener(event, callback.name);
     }
 
-    eventTarget.addEventListener(event, callbackBundle, {
+    this.addEventListener(event, callbackBundle, {
       once: once,
       signal: listener.controller.signal,
     });
 
-    //https://developer.mozilla.org/en-US/docs/Web/API/AbortSignal/timeout_static
-    //At time of writing there is no way to combine multiple signals. This means that you can't
-    //directly abort a download using either a timeout signal or by calling AbortController.abort()
-    //signal: duration ? AbortSignal.timeout(duration) : listener.controller.signal
+    this.stream[event].push(listener);
+  }
 
-    stream[event].push(listener);
-  };
+  raiseEvent(event, data) {
+    // Batching events for frequent raises:
+    Promise.resolve().then(() => {
+      this.dispatchEvent(new CustomEvent(event, { detail: data }));
+    });
+    /*
+    setTimeout(() => {
+      this.dispatchEvent(new CustomEvent(event, { detail: data }));
+    }, 0);
+    */
+    //this.dispatchEvent(new CustomEvent(event, { detail: data }));
 
-  const raiseEvent = (event, data) => {
-    eventTarget.dispatchEvent(new CustomEvent(event, { detail: data }));
-
-    if (logging === true) {
-      console.log("eventStream event: " + event);
-      console.log("eventStream data: " + JSON.stringify(data));
+    if (this.logging) {
+      console.log(`eventStream event: ${event}`);
+      console.log(`eventStream data: ${JSON.stringify(data)}`);
     }
-  };
+  }
 
-  const removeListener = (event, listener) => {
-    let streamEvent = stream[event];
+  removeListener(event, listener) {
+    const streamEvent = this.stream[event];
+    if (!streamEvent) return;
 
-    // If the event does not exist, do nothing.
-    if (typeof streamEvent === "undefined") {
-      return;
-    }
-
-    const clearListener = (i) => {
-      streamEvent[i].controller.abort();
-      streamEvent.splice(i, 1);
+    const clearListener = (index) => {
+      streamEvent[index].controller.abort();
+      streamEvent.splice(index, 1);
     };
 
     if (typeof listener === "string") {
@@ -103,93 +101,70 @@ export const EventStream = () => {
     } else if (Number.isInteger(listener) && listener < streamEvent.length) {
       clearListener(listener);
     } else {
-      let i = streamEvent.findIndex((e) => e.callback === listener);
-      if (i >= 0) {
-        clearListener(i);
+      const index = streamEvent.findIndex((e) => e.callback === listener);
+      if (index >= 0) {
+        clearListener(index);
       }
     }
 
     console.log(`eventStream: Removed event ${listener} on event ${event}.`);
-  };
+  }
 
-  const getListener = (event, id) => {
-    return stream[event].find((e) => e.callback.name === id);
-  };
+  getListener(event, id) {
+    return this.stream[event]?.find((e) => e.callback.name === id);
+  }
 
-  const purge = (event) => {
-    if (typeof event === "undefined") {
+  purge(event) {
+    if (!event) {
       console.log("eventStream: attempted to purge invalid event");
       return;
     }
 
     if (event === "ALL") {
-      for (const ev in stream) {
-        for (const cb of stream[ev]) {
-          cb.controller.abort();
-        }
+      for (const ev in this.stream) {
+        this.stream[ev].forEach((cb) => cb.controller.abort());
       }
-      // Empty the stream object.
-      for (var key in stream) {
-        delete stream[key];
-      }
-      return;
+      this.stream = {};
+    } else if (this.stream[event]) {
+      this.stream[event].forEach((callback) => callback.controller.abort());
+      this.stream[event] = [];
     }
+  }
 
-    if (stream[event]) {
-      for (const callback of stream[event]) {
-        callback.controller.abort();
-      }
-
-      stream[event] = [];
-      return;
-    }
-  };
-
-  const gmcpHandler = () => {
-    while (gmcpBackLog && gmcpBackLog.length > 0) {
-      const current_args = gmcpBackLog.shift();
-      if (current_args.gmcp_method) {
+  gmcpHandler() {
+    while (this.gmcpBackLog.length > 0) {
+      const currentArgs = this.gmcpBackLog.shift();
+      if (currentArgs.gmcp_method) {
         setAtString(
           globalThis.GMCP,
-          current_args.gmcp_method.split("."),
-          current_args.gmcp_args
+          currentArgs.gmcp_method.split("."),
+          currentArgs.gmcp_args
         );
-        raiseEvent(current_args.gmcp_method, current_args.gmcp_args);
+        this.raiseEvent(currentArgs.gmcp_method, currentArgs.gmcp_args);
       }
     }
-  };
+  }
 
-  const gmcpHandlerRaw = (gmcp) => {
+  gmcpHandlerRaw(gmcp) {
     if (gmcp.gmcp_method) {
       setAtString(globalThis.GMCP, gmcp.gmcp_method.split("."), gmcp.gmcp_args);
-      raiseEvent(gmcp.gmcp_method, gmcp.gmcp_args);
+      this.raiseEvent(gmcp.gmcp_method, gmcp.gmcp_args);
     }
-  };
+  }
+}
 
-  const setAtString = (obj, dotarr, val) => {
-    dotarr.reduce((p, c, i) => {
-      if (dotarr.length === ++i) {
-        if (typeof val === "object" && Array.isArray(val) === false) {
-          p[c] = Object.assign(p[c] || {}, val);
-        } else {
-          p[c] = val;
-        }
-      } else {
-        p[c] = p[c] || {};
-      }
-      return p[c];
-    }, obj);
-  };
+const setAtString = (obj, dotarr, val) => {
+  let current = obj;
+  for (let i = 0; i < dotarr.length - 1; i++) {
+    const key = dotarr[i];
+    current[key] = current[key] || {};
+    current = current[key];
+  }
 
-  return {
-    stream,
-    registerEvent,
-    raiseEvent,
-    removeListener,
-    getListener,
-    purge,
-    gmcpBackLog,
-    gmcpHandler,
-    gmcpHandlerRaw,
-  };
+  const lastKey = dotarr[dotarr.length - 1];
+  if (typeof val === "object" && !Array.isArray(val)) {
+    current[lastKey] = Object.assign(current[lastKey] || {}, val);
+  } else {
+    current[lastKey] = val;
+  }
 };
