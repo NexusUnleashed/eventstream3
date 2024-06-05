@@ -28,7 +28,7 @@ export class EventStream extends EventTarget {
       };
     }
 
-    const callbackBundle = ({ detail }) => {
+    const callbackBundle = async ({ detail }) => {
       try {
         listener.callback(detail);
       } catch (error) {
