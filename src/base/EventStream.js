@@ -28,14 +28,18 @@ export class EventStream extends EventTarget {
       };
     }
 
-    const callbackBundle = async ({ detail }) => {
+    // Tried setting callbackBundle to async to await listener.callback
+    // Do we need that?
+    // Is it just additional overhead for no benefit?
+    // Will we ever set an asynchronous listener?
+    const callbackBundle = ({ detail }) => {
       try {
         listener.callback(detail);
       } catch (error) {
         console.error(
           "Evenstream raiseEvent error:\nevent: %s %o\ncallback %s: %o\ndata: %o\nerror: %o",
           event,
-          stream[event],
+          this.stream[event],
           listener.callback.name,
           { callback },
           detail,
@@ -62,16 +66,21 @@ export class EventStream extends EventTarget {
   }
 
   raiseEvent(event, data) {
+    //This batching method didn't function as intended. It delayed processing
+    //of large blocks of text/GMCP received.
+    /*
     // Batching events for frequent raises:
+    //"Modern" version of setTimeout 0
     Promise.resolve().then(() => {
       this.dispatchEvent(new CustomEvent(event, { detail: data }));
     });
-    /*
+    
     setTimeout(() => {
       this.dispatchEvent(new CustomEvent(event, { detail: data }));
     }, 0);
+    
     */
-    //this.dispatchEvent(new CustomEvent(event, { detail: data }));
+    this.dispatchEvent(new CustomEvent(event, { detail: data }));
 
     if (this.logging) {
       console.log(`eventStream event: ${event}`);
