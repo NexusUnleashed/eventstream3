@@ -19,8 +19,11 @@ export class EventStream extends EventTarget {
 
     if (duration) {
       listener.timer = setTimeout(() => {
+        console.log(`Listener expired for event: ${event}`);
         listener.controller.abort();
         this.removeListener(event, callback.name);
+        listener.controller.abort();
+        clearTimeout(listener.timer);
       }, duration);
 
       listener.controller.signal.onabort = () => {
@@ -46,9 +49,8 @@ export class EventStream extends EventTarget {
           error
         );
       } finally {
-        if (once || duration) {
+        if (once) {
           this.removeListener(event, listener.callback.name);
-          if (duration) clearTimeout(listener.timer);
         }
       }
     };
@@ -58,7 +60,7 @@ export class EventStream extends EventTarget {
     }
 
     this.addEventListener(event, callbackBundle, {
-      once: once,
+      once,
       signal: listener.controller.signal,
     });
 
@@ -93,6 +95,7 @@ export class EventStream extends EventTarget {
     if (!streamEvent) return;
 
     const clearListener = (index) => {
+      console.log(`Clearing listener for event: ${event}, index: ${index}`);
       streamEvent[index].controller.abort();
       streamEvent.splice(index, 1);
     };

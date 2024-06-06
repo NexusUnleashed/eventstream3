@@ -30,7 +30,7 @@ describe("basic eventStream functionality", () => {
 
   test("add event to eventStream", () => {
     let testEvent1 = () => {
-      console.log("hello world");
+      console.log("hello world 1");
     };
     eventStream.registerEvent("testEvent1", testEvent1);
     expect(eventStream.stream).toHaveProperty("testEvent1");
@@ -38,7 +38,7 @@ describe("basic eventStream functionality", () => {
 
   test("remove event by name from eventStream", () => {
     let testEvent2 = () => {
-      console.log("hello world");
+      console.log("hello world 2");
     };
     eventStream.registerEvent("testEvent2", testEvent2);
     eventStream.removeListener("testEvent2", "testEvent2");
@@ -47,7 +47,7 @@ describe("basic eventStream functionality", () => {
 
   test("remove event by index from eventStream", () => {
     let testEvent3 = () => {
-      console.log("hello world");
+      console.log("hello world 3");
     };
     eventStream.registerEvent("testEvent3", testEvent3);
     eventStream.removeListener("testEvent3", 0);
@@ -61,7 +61,7 @@ describe("basic eventStream functionality", () => {
     expect(eventStream.stream["testEvent4"]).toHaveLength(0);
   });
 
-  test("'once' events clear on fire", async () => {
+  test("'once' events clear on fire", () => {
     let check = 0;
     let testEventOnce = () => {
       check += 1;
@@ -69,13 +69,12 @@ describe("basic eventStream functionality", () => {
     eventStream.registerEvent("testEventOnce", testEventOnce, true);
     eventStream.raiseEvent("testEventOnce");
     jest.runAllTimers();
-    await flushPromises();
     eventStream.raiseEvent("testEventOnce");
     expect(check).toEqual(1);
     expect(eventStream.stream["testEventOnce"]).toHaveLength(0);
   });
 
-  test("'once' with 'duration' events clear on fire", async () => {
+  test("'once' with 'duration' events clear on fire", () => {
     let check = 0;
     let testEventOnceD = () => {
       check += 1;
@@ -83,22 +82,53 @@ describe("basic eventStream functionality", () => {
     eventStream.registerEvent("testEventOnceD", testEventOnceD, true, 5000);
     eventStream.raiseEvent("testEventOnceD");
     jest.runAllTimers();
-    await flushPromises();
     eventStream.raiseEvent("testEventOnceD");
     expect(eventStream.stream["testEventOnceD"]).toHaveLength(0);
     expect(check).toEqual(1);
   });
 
   test("'duration' events clear on time", () => {
+    jest.useFakeTimers(); // Use fake timers
+
     let check = 0;
-    let durationEvent = () => {
+    const durationEvent = () => {
       check += 1;
     };
-    eventStream.registerEvent("testEvent", durationEvent, false, 5000);
-    //jest.advanceTimersByTime(10000);
-    //eventStream.raiseEvent("testEvent");
-    jest.runAllTimers();
-    expect(eventStream.stream["testEvent"]).toHaveLength(0);
+
+    eventStream.registerEvent("testEventDuration", durationEvent, false, 1000);
+
     expect(check).toEqual(0);
+
+    eventStream.raiseEvent("testEventDuration");
+    expect(check).toEqual(1);
+
+    eventStream.raiseEvent("testEventDuration");
+    expect(check).toEqual(2);
+
+    eventStream.raiseEvent("testEventDuration");
+    expect(check).toEqual(3);
+
+    jest.advanceTimersByTime(10000); // Advance timers by 1000ms
+    //await new Promise((resolve) => setImmediate(resolve)); // Wait for any pending promises to resolve
+
+    console.log("check:", check);
+    console.log(
+      "listeners after 1000ms:",
+      eventStream.stream["testEventDuration"]
+    );
+
+    eventStream.raiseEvent("testEventDuration");
+    eventStream.raiseEvent("testEventDuration");
+    eventStream.raiseEvent("testEventDuration");
+
+    console.log(
+      "listeners after more events:",
+      eventStream.stream["testEventDuration"]
+    );
+
+    expect(eventStream.stream["testEventDuration"]).toHaveLength(0);
+    expect(check).toEqual(3);
+
+    jest.useRealTimers(); // Restore real timers
   });
 });
