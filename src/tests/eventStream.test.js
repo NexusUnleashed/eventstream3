@@ -16,6 +16,7 @@ beforeEach(async () => {
 
 afterEach(() => {
   jest.runOnlyPendingTimers();
+  jest.runAllTimers();
   jest.useRealTimers();
 });
 
@@ -88,8 +89,6 @@ describe("basic eventStream functionality", () => {
   });
 
   test("'duration' events clear on time", () => {
-    jest.useFakeTimers(); // Use fake timers
-
     let check = 0;
     const durationEvent = () => {
       check += 1;
@@ -98,37 +97,16 @@ describe("basic eventStream functionality", () => {
     eventStream.registerEvent("testEventDuration", durationEvent, false, 1000);
 
     expect(check).toEqual(0);
-
     eventStream.raiseEvent("testEventDuration");
     expect(check).toEqual(1);
-
     eventStream.raiseEvent("testEventDuration");
     expect(check).toEqual(2);
-
     eventStream.raiseEvent("testEventDuration");
     expect(check).toEqual(3);
 
     jest.advanceTimersByTime(10000); // Advance timers by 1000ms
-    //await new Promise((resolve) => setImmediate(resolve)); // Wait for any pending promises to resolve
-
-    console.log("check:", check);
-    console.log(
-      "listeners after 1000ms:",
-      eventStream.stream["testEventDuration"]
-    );
-
-    eventStream.raiseEvent("testEventDuration");
-    eventStream.raiseEvent("testEventDuration");
-    eventStream.raiseEvent("testEventDuration");
-
-    console.log(
-      "listeners after more events:",
-      eventStream.stream["testEventDuration"]
-    );
 
     expect(eventStream.stream["testEventDuration"]).toHaveLength(0);
     expect(check).toEqual(3);
-
-    jest.useRealTimers(); // Restore real timers
   });
 });
