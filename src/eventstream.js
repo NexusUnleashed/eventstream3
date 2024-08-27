@@ -24,3 +24,38 @@ if (
 ) {
   updateNxs();
 }
+
+if (typeof nexusclient !== "undefined" && nexusclient?.logged_in) {
+  globalThis.nexusclient.process_lines = function (lines) {
+    if (this.gagged) return;
+    // Nothing to do if there are no lines. Happens when we receive a GMCP message.
+    if (!lines.length) return;
+
+    this.current_block = lines;
+    let reflexes = this.reflexes();
+
+    for (var idx = 0; idx < lines.length; ++idx) {
+      if (idx >= 1000) break; // just in case we somehow hit an infinite loop (notifications mainly)
+
+      // this is for custom functions/scripts
+      this.current_line = lines[idx];
+      this.current_line.index = idx;
+
+      if (
+        lines[idx].line &&
+        lines[idx].line.indexOf(String.fromCharCode(7)) >= 0
+      )
+        // line contains the beep char
+        this.platform().beep();
+
+      if (!this.fullstop) lines = reflexes.handle_triggers(lines, idx);
+    }
+
+    reflexes.run_function("onBlock", lines, "ALL");
+
+    this.ui().buffer().add_block(lines);
+
+    this.current_line = undefined;
+    this.current_block = undefined;
+  };
+}
