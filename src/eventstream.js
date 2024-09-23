@@ -25,6 +25,8 @@ if (
   updateNxs();
 }
 
+// TODO This snippet is required until the Nexus client is updated to include the
+// index property for lines.
 if (typeof nexusclient !== "undefined" && nexusclient?.logged_in) {
   globalThis.nexusclient.process_lines = function (lines) {
     if (this.gagged) return;
@@ -39,6 +41,7 @@ if (typeof nexusclient !== "undefined" && nexusclient?.logged_in) {
 
       // this is for custom functions/scripts
       this.current_line = lines[idx];
+      // TODO added index property
       this.current_line.index = idx;
 
       if (
@@ -58,4 +61,5 @@ if (typeof nexusclient !== "undefined" && nexusclient?.logged_in) {
     this.current_line = undefined;
     this.current_block = undefined;
   };
+  console.log(`[eventStream]: Loaded nexusclient.process_lines override`);
 }
