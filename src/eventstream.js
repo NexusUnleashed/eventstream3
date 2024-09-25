@@ -54,7 +54,10 @@ const applyOverride = () => {
   console.log(`[eventStream]: Overrides applied`);
 };
 
-if (typeof nexusclient !== "undefined" && nexusclient.charname !== "khaseem") {
+if (
+  typeof nexusclient !== "undefined" &&
+  nexusclient.charname.toLowerCase() !== "khaseem"
+) {
   updateNxs();
   applyOverride();
 }
