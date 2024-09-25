@@ -17,15 +17,7 @@ const updateNxs = () => {
     });
 };
 
-if (
-  typeof nexusclient !== "undefined" &&
-  nexusclient.logged_in &&
-  nexusclient.charname !== "khaseem"
-) {
-  updateNxs();
-}
-
-if (typeof nexusclient !== "undefined" && nexusclient?.logged_in) {
+const applyOverride = () => {
   globalThis.nexusclient.process_lines = function (lines) {
     if (this.gagged) return;
     // Nothing to do if there are no lines. Happens when we receive a GMCP message.
@@ -58,4 +50,14 @@ if (typeof nexusclient !== "undefined" && nexusclient?.logged_in) {
     this.current_line = undefined;
     this.current_block = undefined;
   };
+  console.log(`[eventStream]: Overrides applied`);
+};
+
+if (
+  typeof nexusclient !== "undefined" &&
+  nexusclient.logged_in &&
+  nexusclient.charname !== "khaseem"
+) {
+  updateNxs();
+  applyOverride();
 }
