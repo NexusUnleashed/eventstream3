@@ -31,6 +31,7 @@ const applyOverride = () => {
 
       // this is for custom functions/scripts
       this.current_line = lines[idx];
+      // TODO added index property
       this.current_line.index = idx;
 
       if (
