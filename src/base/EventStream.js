@@ -51,6 +51,9 @@ export class EventStream extends EventTarget {
       }
     };
 
+    // Store the callbackBundle for later reference
+    listener.callbackBundle = callbackBundle;
+
     if (callback.name) {
       this.removeListener(event, callback.name);
     }
@@ -91,7 +94,11 @@ export class EventStream extends EventTarget {
     if (!streamEvent) return;
 
     const clearListener = (index) => {
+      // Explicitly remove the event listener
+      this.removeEventListener(event, streamEvent[index].callbackBundle);
+      // Abort the controller
       streamEvent[index].controller.abort();
+      // Remove from stream
       streamEvent.splice(index, 1);
     };
 
