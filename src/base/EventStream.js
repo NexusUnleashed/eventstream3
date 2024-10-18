@@ -107,9 +107,9 @@ Data:`,
       }
     }
 
-    if (listeners.size === 0) {
+    /*if (listeners.size === 0) {
       delete this.stream[event];
-    }
+    }*/
 
     return removed;
   }

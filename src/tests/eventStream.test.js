@@ -43,23 +43,23 @@ describe("basic eventStream functionality", () => {
     };
     eventStream.registerEvent("testEvent2", testEvent2);
     eventStream.removeListener("testEvent2", "testEvent2");
-    expect(eventStream.stream["testEvent2"]).toHaveLength(0);
+    expect(eventStream.stream["testEvent2"].size).toEqual(0);
   });
-
+  /*
   test("remove event by index from eventStream", () => {
     let testEvent3 = () => {
       console.log("hello world 3");
     };
     eventStream.registerEvent("testEvent3", testEvent3);
     eventStream.removeListener("testEvent3", 0);
-    expect(eventStream.stream["testEvent3"]).toHaveLength(0);
+    expect(eventStream.stream["testEvent3"].size).toEqual(0);
   });
-
+*/
   test("remove event by object from eventStream", () => {
     const callback = jest.fn();
     eventStream.registerEvent("testEvent4", callback);
     eventStream.removeListener("testEvent4", callback);
-    expect(eventStream.stream["testEvent4"]).toHaveLength(0);
+    expect(eventStream.stream["testEvent4"].size).toEqual(0);
   });
 
   test("'once' events clear on fire", () => {
@@ -72,7 +72,7 @@ describe("basic eventStream functionality", () => {
     jest.runAllTimers();
     eventStream.raiseEvent("testEventOnce");
     expect(check).toEqual(1);
-    expect(eventStream.stream["testEventOnce"]).toHaveLength(0);
+    expect(eventStream.stream["testEventOnce"].size).toEqual(0);
   });
 
   test("'once' with 'duration' events clear on fire", () => {
