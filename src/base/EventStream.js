@@ -1,147 +1,143 @@
-export class EventStream extends EventTarget {
+export class EventStream {
   constructor() {
-    super();
-    this.stream = {};
+    this.stream = {}; // Using plain object for events
     this.gmcpBackLog = [];
     this.logging = false;
   }
 
-  registerEvent(event, callback, once = false, duration = false) {
+  registerEvent(event, callback, once = false, duration = false, id) {
+    // Determine the listener ID
+    if (!id) {
+      if (callback.name) {
+        id = callback.name;
+      } else {
+        id = crypto.randomUUID();
+      }
+    }
+
     if (!this.stream[event]) {
-      this.stream[event] = [];
+      this.stream[event] = new Map();
+    }
+
+    const listeners = this.stream[event];
+
+    // Remove existing listener with the same ID
+    if (listeners.has(id)) {
+      this.removeListener(event, id);
     }
 
     const listener = {
-      controller: new AbortController(),
-      callback: callback,
-      id: crypto.randomUUID(),
+      callback,
+      once,
+      id,
     };
 
     if (duration) {
       listener.timer = setTimeout(() => {
-        this.removeListener(event, callback.name);
+        this.removeListener(event, id);
       }, duration);
-
-      listener.controller.signal.onabort = () => {
-        clearTimeout(listener.timer);
-      };
     }
 
-    // Tried setting callbackBundle to async to await listener.callback
-    // Do we need that?
-    // Is it just additional overhead for no benefit?
-    // Will we ever set an asynchronous listener?
-    const callbackBundle = ({ detail }) => {
-      try {
-        listener.callback(detail);
-      } catch (error) {
-        console.error(
-          "Evenstream raiseEvent error:\nevent: %s %o\ncallback %s: %o\ndata: %o\nerror: %o",
-          event,
-          this.stream[event],
-          listener.callback.name,
-          { callback },
-          detail,
-          error
-        );
-      } finally {
-        if (once) {
-          this.removeListener(event, listener.callback.name);
-        }
-      }
-    };
-
-    // Store the callbackBundle for later reference
-    listener.callbackBundle = callbackBundle;
-
-    if (callback.name) {
-      this.removeListener(event, callback.name);
-    }
-
-    this.addEventListener(event, callbackBundle, {
-      once,
-      signal: listener.controller.signal,
-    });
-
-    this.stream[event].push(listener);
+    listeners.set(id, listener);
   }
 
   raiseEvent(event, data) {
-    //This batching method didn't function as intended. It delayed processing
-    //of large blocks of text/GMCP received.
-    /*
-    // Batching events for frequent raises:
-    //"Modern" version of setTimeout 0
-    Promise.resolve().then(() => {
-      this.dispatchEvent(new CustomEvent(event, { detail: data }));
-    });
-    
-    setTimeout(() => {
-      this.dispatchEvent(new CustomEvent(event, { detail: data }));
-    }, 0);
-    
-    */
-    this.dispatchEvent(new CustomEvent(event, { detail: data }));
+    const listeners = this.stream[event];
+    if (!listeners) return;
+
+    for (const [id, listener] of listeners) {
+      try {
+        listener.callback(data);
+      } catch (error) {
+        console.error(
+          `EventStream raiseEvent error:
+Event: ${event}
+Listener ID: ${id}
+Data:`,
+          data,
+          `\nError:`,
+          error
+        );
+      } finally {
+        if (listener.once) {
+          this.removeListener(event, id);
+        }
+      }
+    }
 
     if (this.logging) {
-      console.log(`eventStream event: ${event}`);
-      console.log(`eventStream data: ${JSON.stringify(data)}`);
+      console.log(`EventStream event: ${event}`);
+      console.log(`EventStream data: ${JSON.stringify(data)}`);
     }
   }
 
-  removeListener(event, listener) {
-    const streamEvent = this.stream[event];
-    if (!streamEvent) return;
+  removeListener(event, identifier) {
+    const listeners = this.stream[event];
+    if (!listeners) return false;
 
-    const clearListener = (index) => {
-      // Explicitly remove the event listener
-      this.removeEventListener(event, streamEvent[index].callbackBundle);
-      // Abort the controller
-      streamEvent[index].controller.abort();
-      // Remove from stream
-      streamEvent.splice(index, 1);
-    };
+    let removed = false;
 
-    if (typeof listener === "string") {
-      const listenerIndex = streamEvent.findIndex(
-        (e) => e.callback.name === listener
-      );
-
-      if (listenerIndex >= 0) {
-        clearListener(listenerIndex);
-      } else {
-        return false;
+    if (typeof identifier === "string") {
+      // Remove by ID or function name
+      if (listeners.has(identifier)) {
+        const listener = listeners.get(identifier);
+        if (listener.timer) {
+          clearTimeout(listener.timer);
+        }
+        listeners.delete(identifier);
+        removed = true;
+        console.log(
+          `EventStream: Removed listener ${identifier} from event ${event}.`
+        );
       }
-    } else if (Number.isInteger(listener) && listener < streamEvent.length) {
-      clearListener(listener);
-    } else {
-      const index = streamEvent.findIndex((e) => e.callback === listener);
-      if (index >= 0) {
-        clearListener(index);
+    } else if (typeof identifier === "function") {
+      // Remove by function reference
+      for (const [id, listener] of listeners) {
+        if (listener.callback === identifier) {
+          if (listener.timer) {
+            clearTimeout(listener.timer);
+          }
+          listeners.delete(id);
+          removed = true;
+          console.log(
+            `EventStream: Removed listener ${id} from event ${event}.`
+          );
+          break; // Assuming IDs are unique, we can exit the loop
+        }
       }
     }
 
-    console.log(`eventStream: Removed event ${listener} on event ${event}.`);
+    if (listeners.size === 0) {
+      delete this.stream[event];
+    }
+
+    return removed;
   }
 
   getListener(event, id) {
-    return this.stream[event]?.find((e) => e.callback.name === id);
+    const listeners = this.stream[event];
+    return listeners ? listeners.get(id) : undefined;
   }
 
   purge(event) {
     if (!event) {
-      console.log("eventStream: attempted to purge invalid event");
+      console.warn("EventStream: Attempted to purge invalid event");
       return;
     }
 
     if (event === "ALL") {
-      for (const ev in this.stream) {
-        this.stream[ev].forEach((cb) => cb.controller.abort());
+      for (const eventName in this.stream) {
+        const listeners = this.stream[eventName];
+        for (const [id] of listeners) {
+          this.removeListener(eventName, id);
+        }
       }
       this.stream = {};
     } else if (this.stream[event]) {
-      this.stream[event].forEach((callback) => callback.controller.abort());
-      this.stream[event] = [];
+      const listeners = this.stream[event];
+      for (const [id] of listeners) {
+        this.removeListener(event, id);
+      }
     }
   }
 

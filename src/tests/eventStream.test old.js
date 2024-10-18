@@ -1,6 +1,6 @@
 /*global crypto */
 
-import { EventStream } from "../base/EventStream";
+import { EventStream } from "../base/EventStream_EventTarget";
 const eventStream = new EventStream();
 beforeEach(async () => {
   window.crypto = {
@@ -84,7 +84,7 @@ describe("basic eventStream functionality", () => {
     eventStream.raiseEvent("testEventOnceD");
     jest.runAllTimers();
     eventStream.raiseEvent("testEventOnceD");
-    expect(eventStream.stream["testEventOnceD"].size).toEqual(0);
+    expect(eventStream.stream["testEventOnceD"]).toHaveLength(0);
     expect(check).toEqual(1);
   });
 
@@ -106,7 +106,7 @@ describe("basic eventStream functionality", () => {
 
     jest.advanceTimersByTime(10000); // Advance timers by 1000ms
 
-    expect(eventStream.stream["testEventDuration"].size).toEqual(0);
+    expect(eventStream.stream["testEventDuration"]).toHaveLength(0);
     expect(check).toEqual(3);
   });
 });

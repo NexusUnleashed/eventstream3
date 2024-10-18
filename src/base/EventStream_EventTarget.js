@@ -12,8 +12,8 @@ export class EventStream extends EventTarget {
     }
 
     const listener = {
+      controller: new AbortController(),
       callback: callback,
-      once: once,
       id: crypto.randomUUID(),
     };
 
@@ -21,38 +21,67 @@ export class EventStream extends EventTarget {
       listener.timer = setTimeout(() => {
         this.removeListener(event, callback.name);
       }, duration);
+
+      listener.controller.signal.onabort = () => {
+        clearTimeout(listener.timer);
+      };
     }
 
-    if (callback.name) {
-      this.removeListener(event, callback.name);
-    }
-
-    this.stream[event].push(listener);
-  }
-
-  raiseEvent(event, data) {
-    const streamEvent = this.stream[event];
-    if (!streamEvent) return;
-
-    streamEvent.forEach((listener) => {
+    // Tried setting callbackBundle to async to await listener.callback
+    // Do we need that?
+    // Is it just additional overhead for no benefit?
+    // Will we ever set an asynchronous listener?
+    const callbackBundle = ({ detail }) => {
       try {
-        listener.callback(data);
+        listener.callback(detail);
       } catch (error) {
         console.error(
           "Evenstream raiseEvent error:\nevent: %s %o\ncallback %s: %o\ndata: %o\nerror: %o",
           event,
-          streamEvent,
+          this.stream[event],
           listener.callback.name,
           { callback },
           detail,
           error
         );
       } finally {
-        if (listener.once) {
+        if (once) {
           this.removeListener(event, listener.callback.name);
         }
       }
+    };
+
+    // Store the callbackBundle for later reference
+    listener.callbackBundle = callbackBundle;
+
+    if (callback.name) {
+      this.removeListener(event, callback.name);
+    }
+
+    this.addEventListener(event, callbackBundle, {
+      once,
+      signal: listener.controller.signal,
     });
+
+    this.stream[event].push(listener);
+  }
+
+  raiseEvent(event, data) {
+    //This batching method didn't function as intended. It delayed processing
+    //of large blocks of text/GMCP received.
+    /*
+    // Batching events for frequent raises:
+    //"Modern" version of setTimeout 0
+    Promise.resolve().then(() => {
+      this.dispatchEvent(new CustomEvent(event, { detail: data }));
+    });
+    
+    setTimeout(() => {
+      this.dispatchEvent(new CustomEvent(event, { detail: data }));
+    }, 0);
+    
+    */
+    this.dispatchEvent(new CustomEvent(event, { detail: data }));
 
     if (this.logging) {
       console.log(`eventStream event: ${event}`);
@@ -65,8 +94,10 @@ export class EventStream extends EventTarget {
     if (!streamEvent) return;
 
     const clearListener = (index) => {
-      //Stop and remove any timer on the listener
-      clearTimeout(streamEvent[index].timer);
+      // Explicitly remove the event listener
+      this.removeEventListener(event, streamEvent[index].callbackBundle);
+      // Abort the controller
+      streamEvent[index].controller.abort();
       // Remove from stream
       streamEvent.splice(index, 1);
     };
@@ -105,9 +136,7 @@ export class EventStream extends EventTarget {
 
     if (event === "ALL") {
       for (const ev in this.stream) {
-        this.stream[ev].forEach((cb) =>
-          this.removeListener(ev, cb.callback.name)
-        );
+        this.stream[ev].forEach((cb) => cb.controller.abort());
       }
       this.stream = {};
     } else if (this.stream[event]) {
