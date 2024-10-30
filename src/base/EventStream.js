@@ -116,17 +116,27 @@ export class EventStream extends EventTarget {
         listeners.delete(identifier);
         removed = true;
         console.log(
-          `EventStream: Removed listener ${identifier} from event ${event}.`
+          `eventStream: Removed listener ${identifier} from event ${event}.`
         );
       }
-    } else {
-      const index = listeners.findIndex((e) => e.callback === identifier);
-      if (index >= 0) {
-        clearListener(index);
+    } else if (typeof identifier === "function") {
+      // Remove by function reference
+      for (const [id, listener] of listeners) {
+        if (listener.callback === identifier) {
+          if (listener.timer) {
+            clearTimeout(listener.timer);
+          }
+          listener.controller.abort();
+          listeners.delete(id);
+          removed = true;
+          console.log(
+            `eventStream: Removed listener ${id} from event ${event}.`
+          );
+          break; // Assuming IDs are unique, we can exit the loop
+        }
       }
     }
 
-    console.log(`eventStream: Removed event ${identifier} on event ${event}.`);
     return removed;
   }
 
