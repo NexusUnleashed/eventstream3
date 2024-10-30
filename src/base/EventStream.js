@@ -34,7 +34,7 @@ export class EventStream extends EventTarget {
 
     if (duration) {
       listener.timer = setTimeout(() => {
-        this.removeListener(event, callback.name);
+        this.removeListener(event, listener.id);
       }, duration);
 
       listener.controller.signal.onabort = () => {
@@ -54,14 +54,14 @@ export class EventStream extends EventTarget {
           "Evenstream raiseEvent error:\nevent: %s %o\ncallback %s: %o\ndata: %o\nerror: %o",
           event,
           this.stream[event],
-          listener.callback.name,
+          listener.id,
           { callback },
           detail,
           error
         );
       } finally {
         if (once) {
-          this.removeListener(event, listener.callback.name);
+          this.removeListener(event, listener.id);
         }
       }
     };
