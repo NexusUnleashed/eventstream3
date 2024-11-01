@@ -7,7 +7,7 @@
       "type": "function",
       "name": "__meta",
       "enabled": true,
-      "code": "{\n\t\"description\": \"Nexus event handler\",\n    \"version\": \"1.4.0\",\n    \"website\": \"https://github.com/Log-Wall/eventstream3\",\n    \"dependencies\": []\n}"
+      "code": "{\n\t\"description\": \"Nexus event handler\",\n    \"version\": \"1.4.1\",\n    \"website\": \"https://github.com/Log-Wall/eventstream3\",\n    \"dependencies\": []\n}"
     },
     {
       "type": "function",

@@ -1,6 +1,6 @@
 {
   "name": "nexevent",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "eventstream for the nexus client",
   "main": "bundle.min.js",
   "scripts": {
