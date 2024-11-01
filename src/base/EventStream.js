@@ -137,6 +137,11 @@ export class EventStream extends EventTarget {
       }
     }
 
+    //Remove any events with no listeners attached.
+    /*if (listeners.size === 0) {
+      delete this.stream[event];
+    }*/
+
     return removed;
   }
 
