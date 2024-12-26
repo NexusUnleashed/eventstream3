@@ -30,6 +30,7 @@ export class EventStream extends EventTarget {
       controller: new AbortController(),
       callback,
       id,
+      enabled: true,
     };
 
     if (duration) {
@@ -48,7 +49,9 @@ export class EventStream extends EventTarget {
     // Will we ever set an asynchronous listener?
     const callbackBundle = ({ detail }) => {
       try {
-        listener.callback(detail);
+        if (listener.enabled) {
+          listener.callback(detail);
+        }
       } catch (error) {
         console.error(
           "Evenstream raiseEvent error:\nevent: %s %o\ncallback %s: %o\ndata: %o\nerror: %o",
@@ -148,6 +151,28 @@ export class EventStream extends EventTarget {
   getListener(event, id) {
     const listeners = this.stream[event];
     return listeners ? listeners.get(id) : undefined;
+  }
+
+  enableListener(event, id) {
+    const listener = this.getListener(event, id);
+    if (listener) {
+      listener.enabled = true;
+    } else {
+      console.warn(
+        `eventStream: Attempted to enable invalid listener ${id} for event ${event}`
+      );
+    }
+  }
+
+  disableListener(event, id) {
+    const listener = this.getListener(event, id);
+    if (listener) {
+      listener.enabled = false;
+    } else {
+      console.warn(
+        `eventStream: Attempted to disable invalid listener ${id} for event ${event}`
+      );
+    }
   }
 
   purge(event) {

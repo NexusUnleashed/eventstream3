@@ -111,4 +111,28 @@ describe("basic eventStream functionality", () => {
     expect(eventStream.stream["testEventDuration"].size).toEqual(0);
     expect(check).toEqual(3);
   });
+
+  test("disabled event test", () => {
+    let check = 0;
+    let testEventDisabled = () => {
+      check += 1;
+    };
+    eventStream.registerEvent("testEventDisabled", testEventDisabled);
+    expect(eventStream.stream).toHaveProperty("testEventDisabled");
+    eventStream.raiseEvent("testEventDisabled");
+    eventStream.raiseEvent("testEventDisabled");
+    expect(check).toEqual(2);
+    eventStream.getListener(
+      "testEventDisabled",
+      "testEventDisabled"
+    ).enabled = false;
+    eventStream.raiseEvent("testEventDisabled");
+    expect(check).toEqual(2);
+    eventStream.getListener(
+      "testEventDisabled",
+      "testEventDisabled"
+    ).enabled = true;
+    eventStream.raiseEvent("testEventDisabled");
+    expect(check).toEqual(3);
+  });
 });
