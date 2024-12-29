@@ -6,7 +6,46 @@ export class EventStream extends EventTarget {
     this.logging = false;
   }
 
-  registerEvent(event, callback, once = false, duration = false, id) {
+  registerEvent(
+    event,
+    callback,
+    onceOrOptions = false,
+    durationParam = false,
+    idParam,
+    tagsParam = []
+  ) {
+    let once;
+    let duration;
+    let id;
+    let tags;
+    let enabled = true;
+
+    // If the third argument is an object, interpret it as the options object
+    if (typeof onceOrOptions === "object" && onceOrOptions !== null) {
+      const {
+        once: onceOption = false,
+        duration: durationOption = false,
+        id: idOption,
+        tags: tagsOption = [],
+      } = onceOrOptions;
+
+      once = onceOption;
+      duration = durationOption;
+      id = idOption;
+      tags = tagsOption;
+    } else {
+      console.log(
+        `eventStream.registerEvent() deprecated call ${event} ${
+          id || callback.name
+        }`
+      );
+      // Fallback to old signature
+      once = onceOrOptions;
+      duration = durationParam;
+      id = idParam;
+      tags = tagsParam;
+    }
+
     // Determine the listener ID
     if (!id) {
       if (callback.name) {
@@ -30,7 +69,8 @@ export class EventStream extends EventTarget {
       controller: new AbortController(),
       callback,
       id,
-      enabled: true,
+      enabled: enabled,
+      tags: tags,
     };
 
     if (duration) {
