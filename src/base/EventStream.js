@@ -9,7 +9,7 @@ export class EventStream extends EventTarget {
   registerEvent(
     event,
     callback,
-    onceOrOptions = false,
+    onceOrOptions = false, // could be boolean or object
     durationParam = false,
     idParam,
     tagsParam = []
@@ -20,8 +20,13 @@ export class EventStream extends EventTarget {
     let tags;
     let enabled = true;
 
-    // If the third argument is an object, interpret it as the options object
-    if (typeof onceOrOptions === "object" && onceOrOptions !== null) {
+    // Case 1: Only two arguments => new style with defaults
+    if (arguments.length === 2) {
+      // nothing to do here; all defaults remain
+    }
+
+    // Case 2: Third argument is an options object => new style
+    else if (typeof onceOrOptions === "object" && onceOrOptions !== null) {
       const {
         once: onceOption = false,
         duration: durationOption = false,
@@ -33,17 +38,19 @@ export class EventStream extends EventTarget {
       duration = durationOption;
       id = idOption;
       tags = tagsOption;
-    } else {
+    }
+
+    // Case 3: Old-style usage => interpret positional parameters
+    else {
       console.log(
-        `eventStream.registerEvent() deprecated call ${event} ${
-          id || callback.name
+        `eventStream.registerEvent() deprecated call ${event}, ${
+          idParam || callback.name
         }`
       );
-      // Fallback to old signature
-      once = onceOrOptions;
-      duration = durationParam;
+      once = onceOrOptions ?? false;
+      duration = durationParam ?? false;
       id = idParam;
-      tags = tagsParam;
+      tags = tagsParam ?? [];
     }
 
     // Determine the listener ID
