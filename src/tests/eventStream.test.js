@@ -135,4 +135,21 @@ describe("basic eventStream functionality", () => {
     eventStream.raiseEvent("testEventDisabled");
     expect(check).toEqual(3);
   });
+
+  test("remove event(s) by tag id", () => {
+    let testEventTag1 = () => {};
+    let testEventTag2 = () => {};
+    let testEventTag3 = () => {};
+    eventStream.registerEvent("testEventTag", testEventTag1, {
+      tags: ["tag1"],
+    });
+    eventStream.registerEvent("testEventTag", testEventTag2, {
+      tags: ["tag1"],
+    });
+    eventStream.registerEvent("testEventTag", testEventTag3, {
+      tags: ["tag3"],
+    });
+
+    expect(eventStream.stream["testEventTag"].size).toEqual(3);
+  });
 });
