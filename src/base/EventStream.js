@@ -97,7 +97,7 @@ export class EventStream extends EventTarget {
     const callbackBundle = ({ detail }) => {
       try {
         if (listener.enabled) {
-          listener.callback(detail);
+          listener.callback(detail, event);
         }
       } catch (error) {
         console.error(
