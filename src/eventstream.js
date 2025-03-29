@@ -46,7 +46,8 @@ const applyOverride = () => {
 
     reflexes.run_function("onBlock", lines, "ALL");
 
-    this.ui().buffer().add_block(lines);
+    let block = this.get_displayed_block(lines);
+    this.ui().buffer().add_block(block);
 
     this.current_line = undefined;
     this.current_block = undefined;
