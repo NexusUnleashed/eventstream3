@@ -71,6 +71,19 @@ class Timer {
     return this._enabled ? this._length - this.elapsed() : this._length;
   }
 
+  /**
+   * Clean up timer resources and allow GC.
+   */
+  destroy() {
+    clearTimeout(this._timerId);
+    this._enabled = false;
+    this._startTime = null;
+    this._endTime = null;
+    this._timerId = null;
+    this._length = null;
+    this._defaultLength = null;
+  }
+
   static createTimer(name, length = 0) {
     return new Timer(name, length);
   }

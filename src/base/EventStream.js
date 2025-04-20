@@ -80,10 +80,11 @@ export class EventStream extends EventTarget {
       tags: tags,
     };
 
-    if (duration) {
+    // Once timers receive a default duration of 5 minutes to avoid orphaned listeners
+    if (duration || once) {
       listener.timer = setTimeout(() => {
         this.removeListener(event, listener.id);
-      }, duration);
+      }, duration || 5 * 60 * 1000); // Default to 5 minutes if no duration is provided
 
       listener.controller.signal.onabort = () => {
         clearTimeout(listener.timer);
@@ -163,6 +164,8 @@ export class EventStream extends EventTarget {
           clearTimeout(listener.timer);
         }
         listener.controller.abort();
+        // Explicted removeEventListener for settings without signal
+        this.removeEventListener(event, listener.callbackBundle);
         listeners.delete(identifier);
         removed = true;
         console.log(
@@ -177,6 +180,8 @@ export class EventStream extends EventTarget {
             clearTimeout(listener.timer);
           }
           listener.controller.abort();
+          // Explicted removeEventListener for settings without signal
+          this.removeEventListener(event, listener.callbackBundle);
           listeners.delete(id);
           removed = true;
           console.log(
@@ -188,9 +193,9 @@ export class EventStream extends EventTarget {
     }
 
     //Remove any events with no listeners attached.
-    /*if (listeners.size === 0) {
+    if (listeners.size === 0) {
       delete this.stream[event];
-    }*/
+    }
 
     return removed;
   }
