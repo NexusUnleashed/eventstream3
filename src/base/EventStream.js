@@ -81,7 +81,7 @@ export class EventStream extends EventTarget {
     };
 
     // Once timers receive a default duration of 5 minutes to avoid orphaned listeners
-    if (duration || once) {
+    if (duration /*|| once*/) {
       listener.timer = setTimeout(() => {
         this.removeListener(event, listener.id);
       }, duration || 5 * 60 * 1000); // Default to 5 minutes if no duration is provided
