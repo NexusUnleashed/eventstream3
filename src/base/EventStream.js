@@ -168,9 +168,11 @@ export class EventStream extends EventTarget {
         this.removeEventListener(event, listener.callbackBundle);
         listeners.delete(identifier);
         removed = true;
-        console.log(
-          `eventStream: Removed listener ${identifier} from event ${event}.`
-        );
+        if (this.logging) {
+          console.log(
+            `eventStream: Removed listener ${identifier} from event ${event}.`
+          );
+        }
       }
     } else if (typeof identifier === "function") {
       // Remove by function reference
@@ -184,9 +186,11 @@ export class EventStream extends EventTarget {
           this.removeEventListener(event, listener.callbackBundle);
           listeners.delete(id);
           removed = true;
-          console.log(
-            `eventStream: Removed listener ${id} from event ${event}.`
-          );
+          if (this.logging) {
+            console.log(
+              `eventStream: Removed listener ${id} from event ${event}.`
+            );
+          }
           break; // Assuming IDs are unique, we can exit the loop
         }
       }
