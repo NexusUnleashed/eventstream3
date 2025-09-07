@@ -126,6 +126,8 @@ export class EventStream extends EventTarget {
     });
 
     listeners.set(id, listener);
+
+    return id;
   }
 
   raiseEvent(event, data) {
@@ -160,12 +162,19 @@ export class EventStream extends EventTarget {
     if (typeof identifier === "string") {
       if (listeners.has(identifier)) {
         const listener = listeners.get(identifier);
+
         if (listener.timer) {
           clearTimeout(listener.timer);
         }
+
+        listener.enabled = false; // Safety for ghost listeners
+        listener.callback = () => {}; // Safety for ghost listeners
+
         listener.controller.abort();
+
         // Explicted removeEventListener for settings without signal
         this.removeEventListener(event, listener.callbackBundle);
+
         listeners.delete(identifier);
         removed = true;
         if (this.logging) {
@@ -204,6 +213,19 @@ export class EventStream extends EventTarget {
     return removed;
   }
 
+  removeByTag(event, tag) {
+    const listeners = this.stream[event];
+    if (!listeners) return 0;
+    let count = 0;
+    for (const [id, l] of listeners) {
+      if (l.tags?.includes(tag)) {
+        this.removeListener(event, id);
+        count++;
+      }
+    }
+    return count;
+  }
+
   getListener(event, id) {
     const listeners = this.stream[event];
     return listeners ? listeners.get(id) : undefined;
@@ -229,6 +251,22 @@ export class EventStream extends EventTarget {
         `eventStream: Attempted to disable invalid listener ${id} for event ${event}`
       );
     }
+  }
+
+  hasListeners(event) {
+    const listeners = this.stream[event];
+    return !!(listeners && listeners.size);
+  }
+
+  debugListeners(event) {
+    const listeners = this.stream[event];
+    if (!listeners) return [];
+    return Array.from(listeners.values()).map((l) => ({
+      id: l.id,
+      enabled: l.enabled,
+      tags: l.tags,
+      once: !!l.once,
+    }));
   }
 
   purge(event) {
