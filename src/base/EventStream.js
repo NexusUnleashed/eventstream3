@@ -193,6 +193,10 @@ export class EventStream extends EventTarget {
           listener.controller.abort();
           // Explicted removeEventListener for settings without signal
           this.removeEventListener(event, listener.callbackBundle);
+
+          listener.enabled = false; // Safety for ghost listeners
+          listener.callback = () => {}; // Safety for ghost listeners
+
           listeners.delete(id);
           removed = true;
           if (this.logging) {
