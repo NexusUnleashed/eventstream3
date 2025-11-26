@@ -262,24 +262,51 @@ export class EventStream extends EventTarget {
     listener.callbackBundle = null;
   }
 
-  removeByTag(event, tag) {
-    const listeners = this.stream[event];
-    if (!listeners || listeners.size === 0) return 0;
+  /**
+   * Remove listeners with matching tags across all events
+   * @param {string[]} tags - Array of tags. Listeners must have ALL tags to be removed.
+   * @returns {number} Total number of listeners removed
+   */
+  removeByTag(tags) {
+    if (!Array.isArray(tags) || tags.length === 0) {
+      console.warn(
+        "eventStream: removeByTag requires a non-empty array of tags"
+      );
+      return 0;
+    }
 
-    // Collect IDs first to avoid modifying during iteration
-    const idsToRemove = [];
-    for (const [id, l] of listeners) {
-      if (l.tags?.includes(tag)) {
-        idsToRemove.push(id);
+    let totalRemoved = 0;
+
+    // Iterate through all events
+    for (const event in this.stream) {
+      const listeners = this.stream[event];
+      if (!listeners || listeners.size === 0) continue;
+
+      // Collect IDs first to avoid modifying during iteration
+      const idsToRemove = [];
+      for (const [id, l] of listeners) {
+        // Check if listener has all specified tags
+        if (l.tags && tags.every((tag) => l.tags.includes(tag))) {
+          idsToRemove.push(id);
+        }
+      }
+
+      // Remove in batch
+      for (const id of idsToRemove) {
+        this.removeListener(event, id);
+        totalRemoved++;
       }
     }
 
-    // Remove in batch
-    for (const id of idsToRemove) {
-      this.removeListener(event, id);
+    if (this.logging) {
+      console.log(
+        `eventStream: Removed ${totalRemoved} listener(s) matching tags: ${tags.join(
+          ", "
+        )}`
+      );
     }
 
-    return idsToRemove.length;
+    return totalRemoved;
   }
 
   getListener(event, id) {
