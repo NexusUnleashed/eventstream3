@@ -1,6 +1,5 @@
-export class EventStream extends EventTarget {
+export class EventStream {
   constructor() {
-    super();
     this.stream = {};
     this.gmcpBackLog = [];
     this.logging = false;
@@ -93,11 +92,11 @@ export class EventStream extends EventTarget {
 
     // Create listener object
     const listener = {
-      controller: new AbortController(),
       callback,
       id,
       enabled: true,
-      tags: Array.isArray(tags) ? tags : [],
+      once,
+      tags: Array.isArray(tags) ? new Set(tags) : new Set(),
     };
 
     // Set up duration timer if specified
@@ -105,50 +104,7 @@ export class EventStream extends EventTarget {
       listener.timer = setTimeout(() => {
         this.removeListener(event, id);
       }, duration);
-
-      // Clean up timer on abort
-      listener.controller.signal.addEventListener(
-        "abort",
-        () => {
-          if (listener.timer) {
-            clearTimeout(listener.timer);
-          }
-        },
-        { once: true }
-      );
     }
-
-    // Create callback bundle with fresh lookup
-    const callbackBundle = ({ detail }) => {
-      const currentListener = this.stream[event]?.get(id);
-      if (!currentListener || !currentListener.enabled) {
-        return;
-      }
-
-      try {
-        currentListener.callback(detail, event);
-      } catch (error) {
-        console.error(
-          "EventStream raiseEvent error:\nevent: %s\ncallback ID: %s\ndata: %o\nerror: %o",
-          event,
-          id,
-          detail,
-          error
-        );
-      } finally {
-        if (once && this.stream[event]?.has(id)) {
-          this.removeListener(event, id);
-        }
-      }
-    };
-
-    listener.callbackBundle = callbackBundle;
-
-    // Register with native EventTarget
-    this.addEventListener(event, callbackBundle, {
-      once,
-      signal: listener.controller.signal,
-    });
 
     listeners.set(id, listener);
 
@@ -164,21 +120,38 @@ export class EventStream extends EventTarget {
   }
 
   raiseEvent(event, data) {
-    //This batching method didn't function as intended. It delayed processing
-    //of large blocks of text/GMCP received.
-    /*
-    // Batching events for frequent raises:
-    //"Modern" version of setTimeout 0
-    Promise.resolve().then(() => {
-      this.dispatchEvent(new CustomEvent(event, { detail: data }));
-    });
-    
-    setTimeout(() => {
-      this.dispatchEvent(new CustomEvent(event, { detail: data }));
-    }, 0);
-    
-    */
-    this.dispatchEvent(new CustomEvent(event, { detail: data }));
+    const listeners = this.stream[event];
+
+    // Fast path: no work when there are no listeners
+    if (!listeners || listeners.size === 0) {
+      if (this.logging) {
+        console.log(`eventStream event: ${event}`);
+        console.log(`eventStream data: ${JSON.stringify(data)}`);
+      }
+      return;
+    }
+
+    for (const [id, listener] of listeners) {
+      if (!listener.enabled || typeof listener.callback !== "function") {
+        continue;
+      }
+
+      try {
+        listener.callback(data, event);
+      } catch (error) {
+        console.error(
+          "EventStream raiseEvent error:\nevent: %s\ncallback ID: %s\ndata: %o\nerror: %o",
+          event,
+          id,
+          data,
+          error
+        );
+      } finally {
+        if (listener.once && this.stream[event]?.has(id)) {
+          this.removeListener(event, id);
+        }
+      }
+    }
 
     if (this.logging) {
       console.log(`eventStream event: ${event}`);
@@ -250,16 +223,9 @@ export class EventStream extends EventTarget {
       clearTimeout(listener.timer);
     }
 
-    // Remove event listener BEFORE aborting to ensure cleanup
-    this.removeEventListener(event, listener.callbackBundle);
-
-    // Abort the controller
-    listener.controller.abort();
-
     // Defensive: disable and nullify callback
     listener.enabled = false;
     listener.callback = null;
-    listener.callbackBundle = null;
   }
 
   /**
@@ -286,7 +252,7 @@ export class EventStream extends EventTarget {
       const idsToRemove = [];
       for (const [id, l] of listeners) {
         // Check if listener has all specified tags
-        if (l.tags && tags.every((tag) => l.tags.includes(tag))) {
+        if (l.tags && tags.every((tag) => l.tags.has(tag))) {
           idsToRemove.push(id);
         }
       }
@@ -347,7 +313,7 @@ export class EventStream extends EventTarget {
     return Array.from(listeners.values()).map((l) => ({
       id: l.id,
       enabled: l.enabled,
-      tags: l.tags,
+      tags: Array.from(l.tags),
       once: !!l.once,
     }));
   }
@@ -390,8 +356,8 @@ export class EventStream extends EventTarget {
   gmcpHandler() {
     const errors = [];
 
-    while (this.gmcpBackLog.length > 0) {
-      const currentArgs = this.gmcpBackLog.shift();
+    for (let i = 0; i < this.gmcpBackLog.length; i++) {
+      const currentArgs = this.gmcpBackLog[i];
 
       try {
         if (currentArgs?.gmcp_method) {
@@ -412,6 +378,9 @@ export class EventStream extends EventTarget {
         errors.push({ error, data: currentArgs });
       }
     }
+
+    // Clear backlog in O(1)
+    this.gmcpBackLog.length = 0;
 
     return errors.length > 0 ? errors : null;
   }
