@@ -131,13 +131,32 @@ export class EventStream {
       return;
     }
 
-    for (const [id, listener] of listeners) {
-      if (!listener.enabled || typeof listener.callback !== "function") {
+    // Snapshot listeners to avoid running handlers added mid-dispatch
+    const snapshot = Array.from(listeners.values());
+
+    for (const listener of snapshot) {
+      const { id } = listener;
+      const current = this.stream[event]?.get(id);
+
+      // Skip if the listener was removed/replaced during dispatch
+      if (current !== listener) {
         continue;
       }
 
+      if (!current.enabled || typeof current.callback !== "function") {
+        continue;
+      }
+
+      const isOnce = !!current.once;
+      const callbackFn = current.callback;
+
+      // Pre-disable once listeners to prevent reentrant replay
+      if (isOnce) {
+        current.enabled = false;
+      }
+
       try {
-        listener.callback(data, event);
+        callbackFn(data, event);
       } catch (error) {
         console.error(
           "EventStream raiseEvent error:\nevent: %s\ncallback ID: %s\ndata: %o\nerror: %o",
@@ -147,8 +166,8 @@ export class EventStream {
           error
         );
       } finally {
-        if (listener.once && this.stream[event]?.has(id)) {
-          this.removeListener(event, id);
+        if (isOnce && this.stream[event]?.get(id) === current) {
+          this.removeListener(event, current.id);
         }
       }
     }

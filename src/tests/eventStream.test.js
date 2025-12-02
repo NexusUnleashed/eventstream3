@@ -152,4 +152,26 @@ describe("basic eventStream functionality", () => {
 
     expect(eventStream.stream["testEventTag"].size).toEqual(3);
   });
+
+  test("listener added during dispatch should not fire until next raise", () => {
+    const calls = [];
+
+    const lateListener = () => {
+      calls.push("late");
+    };
+
+    const initialListener = () => {
+      calls.push("initial");
+      eventStream.registerEvent("reentrantEvent", lateListener);
+    };
+
+    eventStream.registerEvent("reentrantEvent", initialListener, { once: true });
+
+    eventStream.raiseEvent("reentrantEvent");
+    expect(calls).toEqual(["initial"]);
+
+    calls.length = 0;
+    eventStream.raiseEvent("reentrantEvent");
+    expect(calls).toEqual(["late"]);
+  });
 });
