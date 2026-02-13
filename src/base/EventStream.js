@@ -227,8 +227,9 @@ export class EventStream {
       }
     }
 
-    // Keep the Map even if empty to maintain consistency with tests
-    // The Map will be cleaned up when new listeners are added or on purge
+    if (removed && listeners.size === 0) {
+      delete this.stream[event];
+    }
 
     return removed;
   }
