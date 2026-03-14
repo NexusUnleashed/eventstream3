@@ -26,9 +26,12 @@ eventStream.stream;
 #### options (recommended object form):
 
 - `once` (boolean): listener fires once, then is removed.
-- `duration` (number): listener is automatically removed after N milliseconds.
+- `duration` (number): listener is automatically removed after N milliseconds. Must be a non-negative finite number.
 - `id` (string): explicit listener ID.
 - `tags` (string[]): metadata for batch removal with `removeByTag`.
+
+If a listener is registered with an ID that already exists on the same event, the old listener is replaced.
+This replacement is deterministic even during an active dispatch: the replacement will not run until the next `raiseEvent`.
 
 ```js
 eventStream.registerEvent("testEvent", onTest, {
@@ -67,6 +70,8 @@ eventStream.registerEvent("testEvent", testFunction, {
 ### `raiseEvent(event, data?)`
 
 Raises an event by string ID and passes `data` to each listener as `(data, eventName)`.
+Listeners added during an active dispatch are deferred until the next raise.
+Listeners removed, disabled, or replaced before their turn are skipped deterministically.
 
 ```js
 eventStream.raiseEvent("testEvent", { some: "payload" });
@@ -101,6 +106,7 @@ Returns the listener object or `undefined`.
 ### `enableListener(event, id)` / `disableListener(event, id)`
 
 Enable or disable a listener without removing it.
+Both methods return `true` when the listener exists and `false` otherwise.
 
 ### `hasListeners(event)`
 
@@ -125,6 +131,21 @@ eventStream.purge("ALL");
 
 `gmcpHandler()` processes queued `gmcpBackLog` items, updates `GMCP`, and raises events.
 `gmcpHandlerRaw(gmcp)` handles one GMCP payload directly.
+
+`gmcpHandler()` is safe against synchronous re-entry: if a listener calls it while a batch is already being processed, the current batch continues and any queued follow-up GMCP messages are drained once.
+
+## Timer API
+
+`eventStream.createTimer(name, lengthSeconds)` creates a timer bound to the current `eventStream` instance.
+Timer length is measured in seconds.
+
+Timers raise these events:
+
+- `timerStarted<id>`
+- `timerStopped<id>`
+- `timerReset<id>`
+
+`reset()` clears elapsed state and restores the timer to its default length.
 
 ## GMCP behavior
 

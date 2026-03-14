@@ -20,6 +20,9 @@ beforeEach(async () => {
   vi.spyOn(console, "error").mockImplementation(() => {});
 
   eventStream.purge("ALL");
+  eventStream.gmcpBackLog.length = 0;
+  eventStream._listenerSequence = 0;
+  eventStream._processingGmcp = false;
   await flushPromises();
 });
 
@@ -195,6 +198,96 @@ describe("basic eventStream functionality", () => {
     expect(calls).toEqual(["late"]);
   });
 
+  test("listener removed during dispatch does not fire later in the same raise", () => {
+    const calls = [];
+
+    eventStream.registerEvent(
+      "removeDuringDispatch",
+      () => {
+        calls.push("first");
+        eventStream.removeListener("removeDuringDispatch", "second");
+      },
+      { id: "first" }
+    );
+    eventStream.registerEvent(
+      "removeDuringDispatch",
+      () => {
+        calls.push("second");
+      },
+      { id: "second" }
+    );
+
+    eventStream.raiseEvent("removeDuringDispatch");
+
+    expect(calls).toEqual(["first"]);
+    expect(eventStream.getListener("removeDuringDispatch", "second")).toBeUndefined();
+  });
+
+  test("listener replaced during dispatch is deferred until the next raise", () => {
+    const calls = [];
+
+    eventStream.registerEvent(
+      "replaceDuringDispatch",
+      () => {
+        calls.push("first");
+        eventStream.registerEvent(
+          "replaceDuringDispatch",
+          () => {
+            calls.push("replacement");
+          },
+          { id: "target" }
+        );
+      },
+      { id: "first", once: true }
+    );
+    eventStream.registerEvent(
+      "replaceDuringDispatch",
+      () => {
+        calls.push("original");
+      },
+      { id: "target" }
+    );
+
+    eventStream.raiseEvent("replaceDuringDispatch");
+    expect(calls).toEqual(["first"]);
+
+    calls.length = 0;
+    eventStream.raiseEvent("replaceDuringDispatch");
+    expect(calls).toEqual(["replacement"]);
+  });
+
+  test("dispatch snapshot is reused until listeners change", () => {
+    eventStream.registerEvent("snapshotEvent", vi.fn(), { id: "one" });
+    eventStream.registerEvent("snapshotEvent", vi.fn(), { id: "two" });
+
+    expect(eventStream._events.snapshotEvent.snapshot).toBeNull();
+
+    eventStream.raiseEvent("snapshotEvent");
+    const firstSnapshot = eventStream._events.snapshotEvent.snapshot;
+
+    expect(Array.isArray(firstSnapshot)).toEqual(true);
+
+    eventStream.raiseEvent("snapshotEvent");
+    expect(eventStream._events.snapshotEvent.snapshot).toBe(firstSnapshot);
+
+    eventStream.registerEvent("snapshotEvent", vi.fn(), { id: "three" });
+    expect(eventStream._events.snapshotEvent.snapshot).toBeNull();
+
+    eventStream.raiseEvent("snapshotEvent");
+    expect(eventStream._events.snapshotEvent.snapshot).not.toBe(firstSnapshot);
+  });
+
+  test("prototype-like event names do not corrupt stream storage", () => {
+    const callback = vi.fn();
+
+    eventStream.registerEvent("__proto__", callback, { id: "proto-listener" });
+    eventStream.raiseEvent("__proto__", { safe: true });
+
+    expect(callback).toHaveBeenCalledWith({ safe: true }, "__proto__");
+    expect(eventStream.hasListeners("__proto__")).toEqual(true);
+    expect(eventStream.stream.__proto__).toBeInstanceOf(Map);
+  });
+
   test("purge removes a single event and reports count", () => {
     eventStream.registerEvent("purgeOne", vi.fn(), { id: "one" });
     eventStream.registerEvent("purgeOne", vi.fn(), { id: "two" });
@@ -265,6 +358,41 @@ describe("GMCP handling", () => {
       "Char.Status"
     );
   });
+
+  test("gmcpHandler is safe under re-entrant processing", () => {
+    const calls = [];
+
+    eventStream.registerEvent(
+      "Char.Status",
+      () => {
+        calls.push("status");
+        eventStream.gmcpBackLog.push({
+          gmcp_method: "Char.Vitals",
+          gmcp_args: { hp: 100 },
+        });
+        eventStream.gmcpHandler();
+      },
+      { id: "status-listener", once: true }
+    );
+    eventStream.registerEvent(
+      "Char.Vitals",
+      (args) => {
+        calls.push(`vitals:${args.hp}`);
+      },
+      { id: "vitals-listener" }
+    );
+    eventStream.gmcpBackLog.push({
+      gmcp_method: "Char.Status",
+      gmcp_args: { class: "Magi" },
+    });
+
+    const errors = eventStream.gmcpHandler();
+
+    expect(errors).toBeNull();
+    expect(calls).toEqual(["status", "vitals:100"]);
+    expect(globalThis.GMCP.Char.Status.class).toEqual("Magi");
+    expect(globalThis.GMCP.Char.Vitals.hp).toEqual(100);
+  });
 });
 
 describe("Timer integration", () => {
@@ -297,5 +425,75 @@ describe("Timer integration", () => {
 
     expect(reset).toHaveBeenCalledTimes(1);
     timer.destroy();
+  });
+
+  test("timer reset clears elapsed state and restores remaining time", () => {
+    const timer = createTimer("elapsed", 5);
+    timer.start();
+
+    vi.advanceTimersByTime(2000);
+    timer.reset();
+
+    expect(timer.duration()).toEqual(0);
+    expect(timer.elapsed()).toEqual(0);
+    expect(timer.remaining()).toEqual(5);
+
+    timer.destroy();
+  });
+
+  test("timer binds to the emitter active at creation time", () => {
+    const boundStream = new EventStream();
+    const started = vi.fn();
+    boundStream.registerEvent("timerStartedbound", started, { id: "started" });
+
+    globalThis.eventStream = boundStream;
+    const timer = createTimer("bound", 1);
+
+    globalThis.eventStream = eventStream;
+    timer.start();
+
+    expect(started).toHaveBeenCalledTimes(1);
+
+    timer.destroy();
+    boundStream.purge("ALL");
+  });
+
+  test("timer rejects invalid lengths", () => {
+    expect(() => createTimer("negative", -1)).toThrow(
+      "Timer length must be a non-negative finite number"
+    );
+    expect(() => createTimer("not-a-number", Number.NaN)).toThrow(
+      "Timer length must be a non-negative finite number"
+    );
+  });
+});
+
+describe("validation and lifecycle helpers", () => {
+  test("registerEvent falls back to deterministic IDs when crypto is unavailable", () => {
+    vi.stubGlobal("crypto", undefined);
+
+    const firstId = eventStream.registerEvent("fallbackIds", () => {});
+    const secondId = eventStream.registerEvent("fallbackIds", () => {});
+
+    expect(firstId).toEqual("listener-1");
+    expect(secondId).toEqual("listener-2");
+  });
+
+  test("listener duration must be a non-negative finite number", () => {
+    expect(() =>
+      eventStream.registerEvent("invalidDuration", vi.fn(), { duration: -1 })
+    ).toThrow("Listener duration must be a non-negative finite number");
+    expect(() =>
+      eventStream.registerEvent("invalidDuration", vi.fn(), { duration: Number.NaN })
+    ).toThrow("Listener duration must be a non-negative finite number");
+  });
+
+  test("enableListener and disableListener report success state", () => {
+    eventStream.registerEvent("toggleEvent", vi.fn(), { id: "toggle" });
+
+    expect(eventStream.disableListener("toggleEvent", "toggle")).toEqual(true);
+    expect(eventStream.enableListener("toggleEvent", "toggle")).toEqual(true);
+    expect(eventStream.disableListener("toggleEvent", "missing")).toEqual(false);
+    expect(eventStream.enableListener("toggleEvent", "missing")).toEqual(false);
   });
 });
