@@ -1,13 +1,17 @@
-class Timer {
-  constructor(id, length = 0) {
+export class Timer {
+  constructor(id, length = 0, emitter = globalThis.eventStream) {
     this._id = id;
     this._enabled = false;
     this._startTime = 0;
     this._endTime = 0;
     this._timerId = 0;
     this._defaultLength = length;
+    this._emitter = emitter;
+    this._stopHandler = () => {
+      this.stop();
+    };
+
     this.setLength(length);
-    this._callbacks = [];
   }
 
   get length() {
@@ -23,69 +27,84 @@ class Timer {
   }
 
   setLength(length) {
-    if (length < 0) {
-      throw new Error("Timer length cannot be negative");
+    if (typeof length !== "number" || !Number.isFinite(length) || length < 0) {
+      throw new TypeError("Timer length must be a non-negative finite number");
     }
+
     this._length = length;
   }
 
-  //Reset properties to default state.
   reset() {
     clearTimeout(this._timerId);
+    this._timerId = 0;
     this._enabled = false;
     this.setLength(this._defaultLength);
-    this._endTime = performance.now() / 1000;
-    eventStream.raiseEvent(`timerReset${this._id}`);
+    this._startTime = 0;
+    this._endTime = 0;
+    this._raise(`timerReset${this._id}`);
   }
 
   start() {
     clearTimeout(this._timerId);
-    this._startTimer();
-    eventStream.raiseEvent(`timerStarted${this._id}`);
-  }
-
-  _startTimer() {
-    this._timerId = setTimeout(this.stop.bind(this), this._length * 1000);
+    this._timerId = setTimeout(this._stopHandler, this._length * 1000);
     this._enabled = true;
     this._startTime = performance.now() / 1000;
+    this._endTime = 0;
+    this._raise(`timerStarted${this._id}`);
   }
 
   stop() {
-    if (this._enabled) {
-      clearTimeout(this._timerId);
-      this._endTime = performance.now() / 1000;
-      this._enabled = false;
-      eventStream.raiseEvent(`timerStopped${this._id}`);
+    if (!this._enabled) {
+      return false;
     }
+
+    clearTimeout(this._timerId);
+    this._timerId = 0;
+    this._endTime = performance.now() / 1000;
+    this._enabled = false;
+    this._raise(`timerStopped${this._id}`);
+    return true;
   }
 
   duration() {
-    return this._enabled ? this.elapsed() : this._endTime - this._startTime;
+    if (this._enabled) {
+      return this.elapsed();
+    }
+
+    if (this._startTime === 0 || this._endTime === 0 || this._endTime < this._startTime) {
+      return 0;
+    }
+
+    return this._endTime - this._startTime;
   }
 
   elapsed() {
-    return this._enabled ? performance.now() / 1000 - this._startTime : 0;
+    return this._enabled ? Math.max(0, performance.now() / 1000 - this._startTime) : 0;
   }
 
   remaining() {
-    return this._enabled ? this._length - this.elapsed() : this._length;
+    return this._enabled ? Math.max(0, this._length - this.elapsed()) : this._length;
   }
 
-  /**
-   * Clean up timer resources and allow GC.
-   */
   destroy() {
     clearTimeout(this._timerId);
     this._enabled = false;
-    this._startTime = null;
-    this._endTime = null;
-    this._timerId = null;
-    this._length = null;
-    this._defaultLength = null;
+    this._startTime = 0;
+    this._endTime = 0;
+    this._timerId = 0;
+    this._length = 0;
+    this._defaultLength = 0;
+    this._emitter = null;
   }
 
-  static createTimer(name, length = 0) {
-    return new Timer(name, length);
+  _raise(event) {
+    if (this._emitter && typeof this._emitter.raiseEvent === "function") {
+      this._emitter.raiseEvent(event);
+    }
+  }
+
+  static createTimer(name, length = 0, emitter = globalThis.eventStream) {
+    return new Timer(name, length, emitter);
   }
 }
 

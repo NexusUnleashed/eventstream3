@@ -10,23 +10,45 @@ Many Nexus users create package with multiple onGMCP functions for various purpo
 
 ### `stream`
 
-The `stream` object holds the array of all registered events. Users can browse this object for all available events.
+`stream` is an object keyed by event name. Each value is a `Map` keyed by listener ID.
+Event keys are automatically removed when their last listener is removed.
 
 ```js
 eventStream.stream;
 ```
 
-### `registerEvent(event, callback, once = false, duration = false)`
+### `registerEvent(event, callback, options?)`
 
 #### event: string name of the event.
 
 #### callback: function to fire when event is raised.
 
-#### once: boolean, listener will fire once and be removed (single fire).
+#### options (recommended object form):
 
-#### duration: in miliseconds, listener will be live and then remove after elapsed time.
+- `once` (boolean): listener fires once, then is removed.
+- `duration` (number): listener is automatically removed after N milliseconds. Must be a non-negative finite number.
+- `id` (string): explicit listener ID.
+- `tags` (string[]): metadata for batch removal with `removeByTag`.
 
-##### Users can register an anonymous function to the event. This can be useful for quick snippets or temporary event listeners.
+If a listener is registered with an ID that already exists on the same event, the old listener is replaced.
+This replacement is deterministic even during an active dispatch: the replacement will not run until the next `raiseEvent`.
+
+```js
+eventStream.registerEvent("testEvent", onTest, {
+  once: false,
+  duration: 5000,
+  id: "my-listener-id",
+  tags: ["combat", "tracking"],
+});
+```
+
+#### legacy signature (still supported):
+
+```js
+eventStream.registerEvent(event, callback, once, duration, id, tags);
+```
+
+##### Users can still register anonymous functions for quick snippets.
 
 ```js
 eventStream.registerEvent("testEvent", () => {
@@ -34,86 +56,121 @@ eventStream.registerEvent("testEvent", () => {
 });
 ```
 
-##### Named functions can be more helpful for accessing the listener at a later time. Typically when a user wants to remove a listener from an event.
+##### Named or explicit-ID listeners are easier to remove later.
 
 ```js
-const testFunction = () => {
+const testFunction = (args) => {
   console.log("named arrow function");
 };
-eventStream.registerEvent("testEvent", testFunction);
+eventStream.registerEvent("testEvent", testFunction, {
+  id: "testFunction",
+});
 ```
 
-##### Named functions can be more helpful for accessing the listener at a later time. Typically when a user wants to remove a listener from an event.
+### `raiseEvent(event, data?)`
+
+Raises an event by string ID and passes `data` to each listener as `(data, eventName)`.
+Listeners added during an active dispatch are deferred until the next raise.
+Listeners removed, disabled, or replaced before their turn are skipped deterministically.
 
 ```js
-const singleFire = () => {
-  console.log("single fire event");
-};
-eventStream.registerEvent("testEvent", testFunction, true);
-// Listener will only fire once after testEvent is raised. This listener will not be present for subsequent testEvent events.
+eventStream.raiseEvent("testEvent", { some: "payload" });
 ```
 
-### `raiseEvent(event)`
+### `removeListener(event, identifier)`
 
-Events are string ids used to flag all associated listener functions to fire. By default all GMCP received from the server are raised as events. Users can add any number of additional events.
+Removes one listener using either:
 
-```js
-eventStream.raiseEvent("testEvent");
-/*
-Expected console output based on previous examples:
-arrow function
-named arrow function
-single fire event
-*/
-eventStream.raiseEvent("testEvent");
-/*
-Expected console output based on previous examples:
-arrow function
-named arrow function
-*/
-```
+- listener ID (`string`)
+- callback reference (`function`)
 
-### `removeListener(event, callback id)`
-
-Removes a listener from an event. Typical usage is by function name. Will also accept an integer representing the array position of the listener.
+Returns `true` if a listener was removed, otherwise `false`.
 
 ```js
 eventStream.removeListener("testEvent", "testFunction");
-eventStream.raiseEvent("testEvent");
-/*
-Expected console output based on previous examples:
-arrow function
-*/
 ```
 
-### `purge(event)`
+### `removeByTag(tags)`
+
+Removes listeners across all events that contain **all** provided tags.
+Returns the number of listeners removed.
+
+```js
+eventStream.removeByTag(["combat", "tracking"]);
+```
+
+### `getListener(event, id)`
+
+Returns the listener object or `undefined`.
+
+### `enableListener(event, id)` / `disableListener(event, id)`
+
+Enable or disable a listener without removing it.
+Both methods return `true` when the listener exists and `false` otherwise.
+
+### `hasListeners(event)`
+
+Returns `true` if an event currently has one or more listeners.
+
+### `debugListeners(event)`
+
+Returns a simplified list of listeners with metadata:
+`id`, `enabled`, `tags`, and `once`.
+
+### `purge(event | "ALL")`
 
 Removes all listeners from an event.
+Returns number of listeners removed.
 
 ```js
 eventStream.purge("testEvent");
+eventStream.purge("ALL");
+```
+
+### `gmcpHandler()` / `gmcpHandlerRaw(gmcp)`
+
+`gmcpHandler()` processes queued `gmcpBackLog` items, updates `GMCP`, and raises events.
+`gmcpHandlerRaw(gmcp)` handles one GMCP payload directly.
+
+`gmcpHandler()` is safe against synchronous re-entry: if a listener calls it while a batch is already being processed, the current batch continues and any queued follow-up GMCP messages are drained once.
+
+## Timer API
+
+`eventStream.createTimer(name, lengthSeconds)` creates a timer bound to the current `eventStream` instance.
+Timer length is measured in seconds.
+
+Timers raise these events:
+
+- `timerStarted<id>`
+- `timerStopped<id>`
+- `timerReset<id>`
+
+`reset()` clears elapsed state and restores the timer to its default length.
+
+## GMCP behavior
+
+By default, GMCP messages are raised as events by `gmcp_method`.
+
+Example GMCP:
+
+```text
+[GMCP]: Room.AddPlayer {"name":"Khaseem","fullname":"Khaseem"}
 ```
 
 ## EXAMPLES
 
 ### Nexus GMCP event
 
-The following is an example of a basic function tied to a GMCP event. This will wave to any player that enters the room. An example of the GMCP message from Nexus:
-
-##### [GMCP]: Room.AddPlayer {"name":"Khaseem","fullname":"Khaseem"}
-
-_note: Room.AddPlayer is sent by Nexus but is not a core server GMCP message_
-
-With GMCP messages thse are raised automatically by eventStream as received. This event/listener will fire every time a player enters the room.
-
 ```js
 const greetPlayer = (args) => {
   nexusclient.send_commands(`wave ${args.name}`);
 };
-eventStream.registerEvent("Room.AddPlayer", greetPlayer);
+eventStream.registerEvent("Room.AddPlayer", greetPlayer, {
+  id: "greetPlayer",
+});
 ```
 
-### custom event
+### Custom event
 
 Any number of events can be created. The only requirement is a unique event id.
 
@@ -127,15 +184,13 @@ eventStream.registerEvent("targetShield", shieldNotice);
 ```
 
 Then in a Nexus trigger for ^A nearly invisible magical shield forms around (.\*)\\.$
-You could have snippet of code for
+you could have:
 
 ```js
 eventStream.raiseEvent("targetShield", { id: args[1] });
 ```
 
-Now, someone may ask why not just place the code directly in the trigger? What purpose is the event servering here?
-
-Both are viable paths. One benefit of an event handler in this scenario is any number of other packages could add on to the targetShield event. You may have a bashing package that cares when a target shields, but also a pvp package that cares as well. In a completely separate package you could add another listener:
+One benefit of the event pattern is that multiple packages can subscribe to the same event without sharing trigger logic.
 
 ```js
 const razeTargetPVP = (args) => {
