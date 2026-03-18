@@ -71,7 +71,11 @@ export class EventStream {
           `eventStream: Replacing existing listener "${id}" on event "${event}"`
         );
       }
-      this.removeListener(event, id);
+
+      const existingListener = bucket.listeners.get(id);
+      this._cleanupListener(existingListener);
+      bucket.listeners.delete(id);
+      bucket.snapshot = null;
     }
 
     const listener = {

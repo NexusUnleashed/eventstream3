@@ -73,6 +73,25 @@ describe("basic eventStream functionality", () => {
     expect(eventStream.stream).not.toHaveProperty("testEvent4");
   });
 
+  test("re-registering the same inferred listener ID preserves the event bucket", () => {
+    let calls = 0;
+
+    const itemWatch = () => {
+      calls += 1;
+    };
+
+    const firstId = eventStream.registerEvent("ItemRemovedFromInv", itemWatch);
+    const secondId = eventStream.registerEvent("ItemRemovedFromInv", itemWatch);
+
+    expect(firstId).toEqual("itemWatch");
+    expect(secondId).toEqual("itemWatch");
+    expect(eventStream.stream.ItemRemovedFromInv).toBeInstanceOf(Map);
+    expect(eventStream.stream.ItemRemovedFromInv.size).toEqual(1);
+
+    eventStream.raiseEvent("ItemRemovedFromInv");
+    expect(calls).toEqual(1);
+  });
+
   test("'once' events clear on fire", () => {
     let check = 0;
     const testEventOnce = () => {
