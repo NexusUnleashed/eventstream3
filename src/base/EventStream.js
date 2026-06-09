@@ -47,7 +47,7 @@ export class EventStream {
     onceOrOptions = false,
     durationParam = false,
     idParam,
-    tagsParam = []
+    tagsParam = [],
   ) {
     this._validateEventName(event);
     if (typeof callback !== "function") {
@@ -60,7 +60,7 @@ export class EventStream {
       durationParam,
       idParam,
       tagsParam,
-      arguments.length
+      arguments.length,
     );
     const id = this._resolveListenerId(callback, options.id);
     const bucket = this._getOrCreateBucket(event);
@@ -68,10 +68,13 @@ export class EventStream {
     if (bucket.listeners.has(id)) {
       if (this.logging) {
         console.warn(
-          `eventStream: Replacing existing listener "${id}" on event "${event}"`
+          `eventStream: Replacing existing listener "${id}" on event "${event}"`,
         );
       }
-      this.removeListener(event, id);
+      const existingListener = bucket.listeners.get(id);
+      this._cleanupListener(existingListener);
+      bucket.listeners.delete(id);
+      bucket.snapshot = null;
     }
 
     const listener = {
@@ -96,7 +99,7 @@ export class EventStream {
       console.log(
         `eventStream: Registered listener "${id}" for event "${event}"` +
           (listener.once ? " (once)" : "") +
-          (options.duration > 0 ? ` (${options.duration}ms)` : "")
+          (options.duration > 0 ? ` (${options.duration}ms)` : ""),
       );
     }
 
@@ -114,7 +117,8 @@ export class EventStream {
     }
 
     const snapshot =
-      bucket.snapshot || (bucket.snapshot = Array.from(bucket.listeners.values()));
+      bucket.snapshot ||
+      (bucket.snapshot = Array.from(bucket.listeners.values()));
 
     for (let i = 0; i < snapshot.length; i += 1) {
       const listener = snapshot[i];
@@ -141,10 +145,13 @@ export class EventStream {
           event,
           current.id,
           data,
-          error
+          error,
         );
       } finally {
-        if (current.once && this._events[event]?.listeners.get(current.id) === current) {
+        if (
+          current.once &&
+          this._events[event]?.listeners.get(current.id) === current
+        ) {
           this.removeListener(event, current.id);
         }
       }
@@ -172,7 +179,7 @@ export class EventStream {
         if (this.logging) {
           console.warn(
             `eventStream: Listener "${identifier}" not found for event "${event}". ` +
-              `Available IDs: ${Array.from(listeners.keys()).join(", ")}`
+              `Available IDs: ${Array.from(listeners.keys()).join(", ")}`,
           );
         }
         return false;
@@ -181,7 +188,7 @@ export class EventStream {
       this._removeListenerFromBucket(event, bucket, identifier, listener);
       if (this.logging) {
         console.log(
-          `eventStream: Removed listener ${identifier} from event ${event}.`
+          `eventStream: Removed listener ${identifier} from event ${event}.`,
         );
       }
       return true;
@@ -192,7 +199,9 @@ export class EventStream {
         if (listener.callback === identifier) {
           this._removeListenerFromBucket(event, bucket, id, listener);
           if (this.logging) {
-            console.log(`eventStream: Removed listener ${id} from event ${event}.`);
+            console.log(
+              `eventStream: Removed listener ${id} from event ${event}.`,
+            );
           }
           return true;
         }
@@ -210,7 +219,9 @@ export class EventStream {
   removeByTag(tags) {
     const normalizedTags = this._normalizeTags(tags);
     if (normalizedTags.length === 0) {
-      console.warn("eventStream: removeByTag requires a non-empty array of tags");
+      console.warn(
+        "eventStream: removeByTag requires a non-empty array of tags",
+      );
       return 0;
     }
 
@@ -241,8 +252,8 @@ export class EventStream {
     if (this.logging) {
       console.log(
         `eventStream: Removed ${totalRemoved} listener(s) matching tags: ${normalizedTags.join(
-          ", "
-        )}`
+          ", ",
+        )}`,
       );
     }
 
@@ -257,7 +268,7 @@ export class EventStream {
     const listener = this.getListener(event, id);
     if (!listener) {
       console.warn(
-        `eventStream: Attempted to enable invalid listener ${id} for event ${event}`
+        `eventStream: Attempted to enable invalid listener ${id} for event ${event}`,
       );
       return false;
     }
@@ -270,7 +281,7 @@ export class EventStream {
     const listener = this.getListener(event, id);
     if (!listener) {
       console.warn(
-        `eventStream: Attempted to disable invalid listener ${id} for event ${event}`
+        `eventStream: Attempted to disable invalid listener ${id} for event ${event}`,
       );
       return false;
     }
@@ -335,15 +346,21 @@ export class EventStream {
         const currentArgs = this.gmcpBackLog[i];
 
         try {
-          if (typeof currentArgs?.gmcp_method !== "string" || !currentArgs.gmcp_method) {
-            console.warn("eventStream: Invalid GMCP data in backlog:", currentArgs);
+          if (
+            typeof currentArgs?.gmcp_method !== "string" ||
+            !currentArgs.gmcp_method
+          ) {
+            console.warn(
+              "eventStream: Invalid GMCP data in backlog:",
+              currentArgs,
+            );
             continue;
           }
 
           setAtString(
             globalThis.GMCP,
             currentArgs.gmcp_method.split("."),
-            currentArgs.gmcp_args
+            currentArgs.gmcp_args,
           );
           this.raiseEvent(currentArgs.gmcp_method, currentArgs.gmcp_args);
         } catch (error) {
@@ -389,7 +406,7 @@ export class EventStream {
     if (DOM_EVENT_NAMES.has(event.toLowerCase())) {
       console.warn(
         `eventStream: Using DOM event name "${event}" may cause confusion. ` +
-          `Consider using a namespaced name like "app:${event}"`
+          `Consider using a namespaced name like "app:${event}"`,
       );
     }
 
@@ -416,7 +433,7 @@ export class EventStream {
     durationParam,
     idParam,
     tagsParam,
-    argumentCount
+    argumentCount,
   ) {
     let once = false;
     let duration = false;
@@ -433,7 +450,7 @@ export class EventStream {
       if (this.logging) {
         console.warn(
           `eventStream: Deprecated registerEvent signature for "${event}". ` +
-            "Use: registerEvent(event, callback, { once, duration, id, tags })"
+            "Use: registerEvent(event, callback, { once, duration, id, tags })",
         );
       }
 
@@ -456,8 +473,14 @@ export class EventStream {
       return 0;
     }
 
-    if (typeof duration !== "number" || !Number.isFinite(duration) || duration < 0) {
-      throw new TypeError("Listener duration must be a non-negative finite number");
+    if (
+      typeof duration !== "number" ||
+      !Number.isFinite(duration) ||
+      duration < 0
+    ) {
+      throw new TypeError(
+        "Listener duration must be a non-negative finite number",
+      );
     }
 
     return duration;
@@ -493,7 +516,7 @@ export class EventStream {
       if (this.logging) {
         console.warn(
           `eventStream: Using function name "${callback.name}" as listener ID. ` +
-            "This may break with bundler minification. Consider explicit ID."
+            "This may break with bundler minification. Consider explicit ID.",
         );
       }
       return callback.name;
