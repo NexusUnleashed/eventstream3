@@ -36,6 +36,9 @@ import * as muiLab from "@mui/lab";
 import * as dndCore from "@dnd-kit/core";
 import * as dndSortable from "@dnd-kit/sortable";
 import * as dndUtilities from "@dnd-kit/utilities";
+import * as tanstackReactTable from "@tanstack/react-table";
+import * as tanstackReactVirtual from "@tanstack/react-virtual";
+import * as immer from "immer";
 import * as xstate from "xstate";
 import * as zustand from "zustand";
 import * as zod from "zod";
@@ -47,6 +50,9 @@ globalThis.nexRuntime = {
   dndCore,
   dndSortable,
   dndUtilities,
+  immer,
+  tanstackReactTable,
+  tanstackReactVirtual,
   xstate,
   zustand,
   zod,

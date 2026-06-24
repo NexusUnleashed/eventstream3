@@ -3,7 +3,7 @@ import react from "@vitejs/plugin-react-swc";
 
 export default defineConfig(({ mode }) => {
   // Shared runtime — a SEPARATE artifact maintained in this repo (see
-  // src/nexus-runtime.js). Bundles MUI/emotion/@mui/lab/dnd-kit/xstate/zod/zustand
+  // src/nexus-runtime.js). Bundles MUI/emotion/@mui/lab/dnd-kit/TanStack/immer/xstate/zod/zustand
   // once and exposes them on `globalThis.nexRuntime`. React/ReactDOM stay external
   // (one React on the page). Not part of the event-bus bundle.
   if (mode === "runtime") {
