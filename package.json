@@ -1,6 +1,6 @@
 {
   "name": "nexevent",
-  "version": "1.6.3",
+  "version": "1.6.4",
   "private": true,
   "dependencies": {
     "nexbash": "file:../nexbash3",
