@@ -30,18 +30,21 @@
  * the same React (and the same emotion instance) as every consumer. Bundling our
  * own React here would create a second copy and break hooks/context/styling.
  */
-import * as mui from "@mui/material";
-import * as muiStyles from "@mui/material/styles";
-import * as muiLab from "@mui/lab";
-import * as dndCore from "@dnd-kit/core";
-import * as dndSortable from "@dnd-kit/sortable";
-import * as dndUtilities from "@dnd-kit/utilities";
-import * as tanstackReactTable from "@tanstack/react-table";
-import * as tanstackReactVirtual from "@tanstack/react-virtual";
-import * as immer from "immer";
-import * as xstate from "xstate";
-import * as zustand from "zustand";
-import * as zod from "zod";
+// Bundled versions below are the RESOLVED installs at the last update, not the
+// caret ranges in package.json — they drift upward on `npm install`. Refresh
+// after bumping deps:  node -p "require('PKG/package.json').version"
+import * as mui from "@mui/material";                            // 9.1.2
+import * as muiStyles from "@mui/material/styles";               // 9.1.2 (part of @mui/material)
+import * as muiLab from "@mui/lab";                              // 9.0.0-beta.5
+import * as dndCore from "@dnd-kit/core";                        // 6.3.1
+import * as dndSortable from "@dnd-kit/sortable";                // 10.0.0
+import * as dndUtilities from "@dnd-kit/utilities";             // 3.2.2
+import * as tanstackReactTable from "@tanstack/react-table";     // 8.21.3
+import * as tanstackReactVirtual from "@tanstack/react-virtual"; // 3.14.4
+import * as immer from "immer";                                  // 11.1.8
+import * as xstate from "xstate";                                // 5.32.2
+import * as zustand from "zustand";                              // 5.0.14
+import * as zod from "zod";                                      // 4.4.3
 
 globalThis.nexRuntime = {
   mui,
